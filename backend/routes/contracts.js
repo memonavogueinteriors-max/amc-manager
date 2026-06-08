@@ -45,7 +45,7 @@ router.post('/', auth, async (req, res) => {
     const contract_number = `AMC-${String(parseInt(count.rows[0].c) + 1).padStart(3,'0')}`;
     const result = await getDb().query(
       'INSERT INTO contracts (contract_number,villa_id,client_id,package,monthly_value,start_date,end_date,relationship_manager_id,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id',
-[contract_number, Number(villa_id), Number(client_id), pkg, Number(monthly_value), start_date, end_date, relationship_manager_id ? Number(relationship_manager_id) : null, notes]
+[contract_number, parseInt(villa_id||0), parseInt(client_id||0), pkg, parseFloat(monthly_value||0), start_date, end_date, relationship_manager_id ? parseInt(relationship_manager_id) : null, notes||'']
     res.json({ id: result.rows[0].id, contract_number });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
