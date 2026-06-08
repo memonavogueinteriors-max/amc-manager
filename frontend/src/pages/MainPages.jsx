@@ -84,9 +84,13 @@ export function Contracts() {
     api.get('/clients').then(r => setClients(r.data));
   }, [filter]);
 
-  const save = async () => {
-    await api.post('/contracts', form);
-    setModal(false); load();
+const save = async () => {
+    try {
+      await api.post('/contracts', form);
+      setModal(false); load();
+    } catch(e) {
+      alert('Error: ' + (e.response?.data?.error || e.message));
+    }
     setForm({ villa_id: '', client_id: '', package: 'Standard', monthly_value: 1200, start_date: '', end_date: '', relationship_manager_id: '', notes: '' });
   };
 
