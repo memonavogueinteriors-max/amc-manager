@@ -9,11 +9,12 @@ router.post('/login', async (req, res) => {
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
   try {
     const db = getDb();
-    const result = await db.prepare('SELECT * FROM users WHERE email = $1').get(email);
-    if (!result || !bcrypt.compareSync(password, result.password))
+    const result = await db.query('SELECT * FROM users WHERE email=$1', [email]);
+    const user = result.rows[0];
+    if (!user || !bcrypt.compareSync(password, user.password))
       return res.status(401).json({ error: 'Invalid credentials' });
-    const token = jwt.sign({ id: result.id, name: result.name, email: result.email, role: result.role }, SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: result.id, name: result.name, email: result.email, role: result.role } });
+    const token = jwt.sign({ id: user.id, name: user.name, email: user.email, role: user.role }, SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
   } catch(e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
@@ -26,9 +27,12 @@ router.post('/register', async (req, res) => {
   try {
     const db = getDb();
     const hash = bcrypt.hashSync(password, 10);
-    const result = await db.prepare('INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id').run(name, email, hash, role || 'rm');
-    res.json({ id: result.lastInsertRowid, name, email, role: role || 'rm' });
-  } catch (e) {
+    const result = await db.query(
+      'INSERT INTO users (name,email,password,role) VALUES ($1,$2,$3,$4) RETURNING id',
+      [name, email, hash, role || 'rm']
+    );
+    res.json({ id: result.rows[0].id, name, email, role: role || 'rm' });
+  } catch(e) {
     res.status(400).json({ error: 'Email already exists' });
   }
 });
