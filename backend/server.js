@@ -3,20 +3,17 @@ const express = require('express');
 const cors = require('cors');
 
 async function start() {
-  const { initDb, getDb } = require('./db/database');
-  const db = await initDb();
-
-  // Make db available globally for routes
-  global.amcDb = db;
+  const { initDb } = require('./db/database');
+  await initDb();
 
   const app = express();
   app.use(cors());
   app.use(express.json());
 
   app.use('/api/auth', require('./routes/auth'));
-  app.use('/api/contracts', require('./routes/contracts'));
 
-  const { clientsRouter, villasRouter, ticketsRouter, scheduleRouter, procurementRouter, dashboardRouter } = require('./routes/all');
+  const { clientsRouter, villasRouter, ticketsRouter, scheduleRouter, procurementRouter, dashboardRouter, contractsRouter } = require('./routes/all');
+  app.use('/api/contracts', contractsRouter);
   app.use('/api/clients', clientsRouter);
   app.use('/api/villas', villasRouter);
   app.use('/api/tickets', ticketsRouter);
