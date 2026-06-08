@@ -13,8 +13,15 @@ export default function Login() {
     e.preventDefault();
     setLoading(true); setError('');
     try {
-      const res = await api.post('/auth/login', { email, password });
-      localStorage.setItem('amc_token', res.data.token);
+     const res = await fetch('https://amc-manager-production.up.railway.app/api/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email, password })
+});
+const data = await res.json();
+if (!res.ok) throw new Error(data.error);
+      localStorage.setItem('amc_token', data.token);
+localStorage.setItem('amc_user', JSON.stringify(data.user));
       localStorage.setItem('amc_user', JSON.stringify(res.data.user));
       navigate('/');
     } catch {
