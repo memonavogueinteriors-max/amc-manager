@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api';
 
 export default function Login() {
-  const [email, setEmail] = useState('admin@amc.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -13,19 +12,18 @@ export default function Login() {
     e.preventDefault();
     setLoading(true); setError('');
     try {
-     const res = await fetch('https://amc-manager-production.up.railway.app/api/auth/login', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ email, password })
-});
-const data = await res.json();
-if (!res.ok) throw new Error(data.error);
+      const res = await fetch('https://amc-manager-production.up.railway.app/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
       localStorage.setItem('amc_token', data.token);
-localStorage.setItem('amc_user', JSON.stringify(data.user));
-      localStorage.setItem('amc_user', JSON.stringify(res.data.user));
+      localStorage.setItem('amc_user', JSON.stringify(data.user));
       navigate('/');
-    } catch {
-      setError('Invalid email or password');
+    } catch(err) {
+      setError(err.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
@@ -55,9 +53,6 @@ localStorage.setItem('amc_user', JSON.stringify(data.user));
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
-          <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg)', borderRadius: 'var(--radius)', fontSize: 12, color: 'var(--text-3)' }}>
-            <strong>Demo:</strong> admin@amc.com / admin123
-          </div>
         </div>
       </div>
     </div>
