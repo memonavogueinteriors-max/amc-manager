@@ -9,8 +9,8 @@ const navItems = [
   { to: '/tickets', label: 'Service Tickets', icon: '🎫', section: null },
   { to: '/clients', label: 'Clients', icon: '👥', section: 'Management' },
   { to: '/reports', label: 'Reports', icon: '📊', section: null },
+  { to: '/recycle', label: 'Recycle Bin', icon: '🗑️', section: null },
 ];
-
 export default function Layout() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('amc_user') || '{}');

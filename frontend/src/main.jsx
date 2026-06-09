@@ -12,6 +12,7 @@ import Tickets from './pages/Tickets';
 import Schedule from './pages/Schedule';
 import Procurement from './pages/Procurement';
 import Reports from './pages/Reports';
+import RecycleBin from './pages/RecycleBin';
 
 function PrivateRoute({ children }) {
   return localStorage.getItem('amc_token') ? children : <Navigate to="/login" />;
@@ -30,6 +31,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="schedule" element={<Schedule />} />
         <Route path="procurement" element={<Procurement />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="recycle" element={<RecycleBin />} />
       </Route>
     </Routes>
   </BrowserRouter>
