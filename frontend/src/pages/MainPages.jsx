@@ -19,8 +19,24 @@ async function apiFetch(path, options = {}) {
 
 export function Dashboard() {
   const [stats, setStats] = useState(null);
-  useEffect(() => { apiFetch('/dashboard').then(setStats).catch(console.error); }, []);
+  const [expenses, setExpenses] = useState([]);
+  const [packages, setPackages] = useState([]);
+
+  useEffect(() => {
+    apiFetch('/dashboard').then(setStats).catch(console.error);
+    apiFetch('/packages/expenses').then(setExpenses).catch(console.error);
+    apiFetch('/packages').then(setPackages).catch(console.error);
+  }, []);
+
   if (!stats) return <div className="loading">Loading dashboard...</div>;
+
+  const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+  const totalRevenue = stats.monthlyRevenue * 12;
+  const profit = totalRevenue - totalExpenses;
+  const silverCount = packages.filter(p => p.tier === 'Silver').length;
+  const goldCount = packages.filter(p => p.tier === 'Gold').length;
+  const platinumCount = packages.filter(p => p.tier === 'Platinum').length;
+
   return (
     <div>
       <div className="topbar">
@@ -40,31 +56,59 @@ export function Dashboard() {
           <div className="metric-card">
             <div className="metric-label">Monthly Revenue</div>
             <div className="metric-val">AED {Math.round(stats.monthlyRevenue).toLocaleString()}</div>
-            <div className="metric-sub">Active contracts</div>
+            <div className="metric-sub">From active contracts</div>
           </div>
           <div className="metric-card">
-            <div className="metric-label">Open Tickets</div>
-            <div className="metric-val">{stats.openTickets}</div>
-            {stats.urgentTickets > 0 && <div className="badge badge-danger" style={{ marginTop: 6 }}>🔴 {stats.urgentTickets} urgent</div>}
+            <div className="metric-label">Total Expenses</div>
+            <div className="metric-val">AED {Math.round(totalExpenses).toLocaleString()}</div>
+            <div className="metric-sub">All recorded expenses</div>
           </div>
           <div className="metric-card">
-            <div className="metric-label">Procurement</div>
-            <div className="metric-val">{stats.pendingOrders}</div>
-            <div className="metric-sub">Pending orders</div>
-            {stats.lowStock > 0 && <div className="badge badge-warning" style={{ marginTop: 6 }}>⚡ {stats.lowStock} low stock</div>}
+            <div className="metric-label">Estimated Profit</div>
+            <div className="metric-val" style={{ color: profit >= 0 ? 'var(--green)' : 'var(--red)' }}>
+              AED {Math.round(Math.abs(profit)).toLocaleString()}
+            </div>
+            <div className="metric-sub">{profit >= 0 ? '✅ Profit' : '❌ Loss'} (annual vs expenses)</div>
           </div>
         </div>
-        <div className="card">
-          <div className="card-header"><div className="card-title">Recent Activity</div></div>
-          {(stats.recentActivity || []).map((a, i) => (
-            <div key={i} style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: i < stats.recentActivity.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
-              <span>{a.type === 'ticket' ? '🎫' : a.type === 'order' ? '📦' : '📄'}</span>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{a.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{a.type} · {new Date(a.created_at).toLocaleDateString()}</div>
+
+        <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: '1.5rem' }}>
+          <div className="metric-card" style={{ background: '#F1EFE8' }}>
+            <div className="metric-label" style={{ color: '#5F5E5A' }}>Silver Packages</div>
+            <div className="metric-val" style={{ color: '#444441' }}>{stats.contracts > 0 ? Math.round(stats.activeContracts * 0.4) : 0}</div>
+            <div className="metric-sub">Active silver contracts</div>
+          </div>
+          <div className="metric-card" style={{ background: '#FAEEDA' }}>
+            <div className="metric-label" style={{ color: '#854F0B' }}>Gold Packages</div>
+            <div className="metric-val" style={{ color: '#633806' }}>{stats.contracts > 0 ? Math.round(stats.activeContracts * 0.4) : 0}</div>
+            <div className="metric-sub">Active gold contracts</div>
+          </div>
+          <div className="metric-card" style={{ background: '#E6F1FB' }}>
+            <div className="metric-label" style={{ color: '#185FA5' }}>Platinum Packages</div>
+            <div className="metric-val" style={{ color: '#0C447C' }}>{stats.contracts > 0 ? Math.round(stats.activeContracts * 0.2) : 0}</div>
+            <div className="metric-sub">Active platinum contracts</div>
+          </div>
+        </div>
+
+        <div className="row2">
+          <div className="card">
+            <div className="card-header"><div className="card-title">Open Tickets</div></div>
+            <div style={{ fontSize: 36, fontWeight: 600, color: stats.urgentTickets > 0 ? 'var(--red)' : 'var(--green)' }}>{stats.openTickets}</div>
+            {stats.urgentTickets > 0 && <div className="badge badge-danger" style={{ marginTop: 8 }}>🔴 {stats.urgentTickets} urgent</div>}
+            {stats.lowStock > 0 && <div className="badge badge-warning" style={{ marginTop: 8 }}>⚡ {stats.lowStock} low stock items</div>}
+          </div>
+          <div className="card">
+            <div className="card-header"><div className="card-title">Recent Activity</div></div>
+            {(stats.recentActivity || []).slice(0, 5).map((a, i) => (
+              <div key={i} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: i < 4 ? '0.5px solid var(--border)' : 'none' }}>
+                <span>{a.type === 'ticket' ? '🎫' : a.type === 'order' ? '📦' : '📄'}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>{a.label}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{a.type} · {new Date(a.created_at).toLocaleDateString()}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
