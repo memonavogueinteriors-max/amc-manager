@@ -1,11 +1,26 @@
-// ── DASHBOARD ────────────────────────────────────────────
 import { useState, useEffect } from 'react';
-import api from '../api';
 
+const API = 'https://amc-manager-production.up.railway.app/api';
+
+function authHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + localStorage.getItem('amc_token')
+  };
+}
+
+async function apiFetch(path, options = {}) {
+  const res = await fetch(API + path, { ...options, headers: authHeaders() });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Error');
+  return data;
+}
+
+// ── DASHBOARD ────────────────────────────────────────────
 export function Dashboard() {
   const [stats, setStats] = useState(null);
 
-  useEffect(() => { api.get('/dashboard').then(r => setStats(r.data)); }, []);
+  useEffect(() => { apiFetch('/dashboard').then(setStats).catch(console.error); }, []);
 
   if (!stats) return <div className="loading">Loading dashboard...</div>;
 
@@ -27,7 +42,7 @@ export function Dashboard() {
           </div>
           <div className="metric-card">
             <div className="metric-label">Monthly Revenue</div>
-            <div className="metric-val">AED {stats.monthlyRevenue.toLocaleString()}</div>
+            <div className="metric-val">AED {Math.round(stats.monthlyRevenue).toLocaleString()}</div>
             <div className="metric-sub">Active contracts</div>
           </div>
           <div className="metric-card">
@@ -42,14 +57,11 @@ export function Dashboard() {
             {stats.lowStock > 0 && <div className="badge badge-warning" style={{ marginTop: 6 }}>⚡ {stats.lowStock} low stock</div>}
           </div>
         </div>
-
         <div className="card">
           <div className="card-header"><div className="card-title">Recent Activity</div></div>
-          {stats.recentActivity.map((a, i) => (
+          {(stats.recentActivity || []).map((a, i) => (
             <div key={i} style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: i < stats.recentActivity.length - 1 ? '0.5px solid var(--border)' : 'none' }}>
-              <span style={{ fontSize: 13, color: a.type === 'ticket' ? 'var(--amber)' : a.type === 'order' ? 'var(--blue-text)' : 'var(--green)' }}>
-                {a.type === 'ticket' ? '🎫' : a.type === 'order' ? '📦' : '📄'}
-              </span>
+              <span>{a.type === 'ticket' ? '🎫' : a.type === 'order' ? '📦' : '📄'}</span>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{a.label}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{a.type} · {new Date(a.created_at).toLocaleDateString()}</div>
@@ -68,55 +80,54 @@ export function Contracts() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [modal, setModal] = useState(false);
+  const [editItem, setEditItem] = useState(null);
   const [villas, setVillas] = useState([]);
   const [clients, setClients] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [form, setForm] = useState({ villa_id: 0, client_id: 0, package: 'Standard', monthly_value: 1200, start_date: '', end_date: '', relationship_manager_id: null, notes: '' });
-const deleteContract = async (id) => {
-  if(!window.confirm('Delete this contract?')) return;
-  await fetch(`https://amc-manager-production.up.railway.app/api/contracts/${id}`, {
-    method: 'DELETE',
-    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('amc_token') }
-  });
-  load();
-};
+  const emptyForm = { villa_id: '', client_id: '', package: 'Standard', monthly_value: 1200, start_date: '', end_date: '', notes: '' };
+  const [form, setForm] = useState(emptyForm);
+
   const load = () => {
     const params = filter !== 'all' ? `?status=${filter}` : '';
-    api.get('/contracts' + params).then(r => { setContracts(r.data); setLoading(false); });
+    apiFetch('/contracts' + params).then(r => { setContracts(r); setLoading(false); }).catch(console.error);
   };
 
   useEffect(() => {
     load();
-    api.get('/villas').then(r => setVillas(r.data));
-    api.get('/clients').then(r => setClients(r.data));
+    apiFetch('/villas').then(setVillas).catch(console.error);
+    apiFetch('/clients').then(setClients).catch(console.error);
   }, [filter]);
 
-const save = async () => {
+  const openNew = () => { setEditItem(null); setForm(emptyForm); setModal(true); };
+  const openEdit = (c) => {
+    setEditItem(c);
+    setForm({ villa_id: c.villa_id, client_id: c.client_id, package: c.package, monthly_value: c.monthly_value, start_date: c.start_date, end_date: c.end_date, notes: c.notes || '' });
+    setModal(true);
+  };
+
+  const save = async () => {
     try {
-      await fetch('https://amc-manager-production.up.railway.app/api/contracts', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + localStorage.getItem('amc_token')
-        },
-        body: JSON.stringify({
-          villa_id: parseInt(form.villa_id),
-          client_id: parseInt(form.client_id),
-          package: form.package,
-          monthly_value: parseFloat(form.monthly_value),
-          start_date: form.start_date,
-          end_date: form.end_date,
-          relationship_manager_id: form.relationship_manager_id ? parseInt(form.relationship_manager_id) : null,
-          notes: form.notes || ''
-        })
-      }).then(r => r.json()).then(data => {
-        if(data.error) throw new Error(data.error);
-        setModal(false); load();
-      });
-    } catch(e) {
-      alert('Error: ' + e.message);
-    }
-    setForm({ villa_id: '', client_id: '', package: 'Standard', monthly_value: 1200, start_date: '', end_date: '', relationship_manager_id: '', notes: '' });
+      const body = {
+        villa_id: parseInt(form.villa_id),
+        client_id: parseInt(form.client_id),
+        package: form.package,
+        monthly_value: parseFloat(form.monthly_value),
+        start_date: form.start_date,
+        end_date: form.end_date,
+        notes: form.notes || ''
+      };
+      if (editItem) {
+        await fetch(`${API}/contracts/${editItem.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({...body, status: editItem.status}) });
+      } else {
+        await fetch(`${API}/contracts`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+      }
+      setModal(false); load();
+    } catch(e) { alert('Error: ' + e.message); }
+  };
+
+  const del = async (id) => {
+    if (!window.confirm('Delete this contract?')) return;
+    await fetch(`${API}/contracts/${id}`, { method: 'DELETE', headers: authHeaders() });
+    load();
   };
 
   const pkgValues = { Standard: 1200, Premium: 1800, Elite: 2400 };
@@ -126,7 +137,7 @@ const save = async () => {
       <div className="topbar">
         <div className="topbar-title">Contracts</div>
         <div className="topbar-right">
-          <button className="btn btn-primary" onClick={() => setModal(true)}>+ New Contract</button>
+          <button className="btn btn-primary" onClick={openNew}>+ New Contract</button>
         </div>
       </div>
       <div className="content">
@@ -140,7 +151,7 @@ const save = async () => {
         <div className="card">
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Contract #</th><th>Villa</th><th>Client</th><th>Package</th><th>Monthly</th><th>Start</th><th>End</th><th>RM</th><th>Status</th></tr></thead>
+              <thead><tr><th>Contract #</th><th>Villa</th><th>Client</th><th>Package</th><th>Monthly</th><th>Start</th><th>End</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
                 {loading ? <tr><td colSpan={9} className="loading">Loading...</td></tr> :
                   contracts.length === 0 ? <tr><td colSpan={9} className="empty">No contracts found</td></tr> :
@@ -150,14 +161,14 @@ const save = async () => {
                       <td>{c.villa_number}, Block {c.block}</td>
                       <td>{c.client_name}</td>
                       <td><span className={`pill pill-${c.package === 'Elite' ? 'pending' : c.package === 'Premium' ? 'active' : 'resolved'}`}>{c.package}</span></td>
-                      <td>AED {c.monthly_value.toLocaleString()}</td>
+                      <td>AED {c.monthly_value?.toLocaleString()}</td>
                       <td>{c.start_date}</td>
                       <td>{c.end_date}</td>
-                      <td>{c.rm_name || '—'}</td>
-                     <td><span className={`pill pill-${c.status}`}>{c.status}</span></td>
-<td style={{display:'flex',gap:6}}>
-  <button className="btn btn-sm" onClick={()=>deleteContract(c.id)}>Delete</button>
-</td>
+                      <td><span className={`pill pill-${c.status}`}>{c.status}</span></td>
+                      <td style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
+                      </td>
                     </tr>
                   ))
                 }
@@ -171,7 +182,7 @@ const save = async () => {
         <div className="modal-bg" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
             <div className="modal-header">
-              <div className="modal-title">New AMC Contract</div>
+              <div className="modal-title">{editItem ? 'Edit Contract' : 'New AMC Contract'}</div>
               <button className="btn btn-sm" onClick={() => setModal(false)}>✕</button>
             </div>
             <div className="form-row">
@@ -199,7 +210,7 @@ const save = async () => {
               </div>
               <div className="form-group">
                 <label className="form-label">Monthly Value (AED)</label>
-                <input className="form-input" type="number" value={form.monthly_value} onChange={e => setForm({...form, monthly_value: +e.target.value})} />
+                <input className="form-input" type="number" value={form.monthly_value} onChange={e => setForm({...form, monthly_value: e.target.value})} />
               </div>
             </div>
             <div className="form-row">
@@ -218,7 +229,7 @@ const save = async () => {
             </div>
             <div className="modal-footer">
               <button className="btn" onClick={() => setModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={save}>Save Contract</button>
+              <button className="btn btn-primary" onClick={save}>{editItem ? 'Update' : 'Save Contract'}</button>
             </div>
           </div>
         </div>
@@ -233,23 +244,38 @@ export function Villas() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(false);
+  const [editItem, setEditItem] = useState(null);
   const [clients, setClients] = useState([]);
-  const [form, setForm] = useState({ villa_number: '', block: 'A', client_id: '', bedrooms: '', notes: '' });
+  const emptyForm = { villa_number: '', block: 'A', client_id: '', bedrooms: '', notes: '' };
+  const [form, setForm] = useState(emptyForm);
 
-  useEffect(() => {
-    api.get('/villas').then(r => { setVillas(r.data); setLoading(false); });
-    api.get('/clients').then(r => setClients(r.data));
-  }, []);
+  const load = () => apiFetch('/villas').then(r => { setVillas(r); setLoading(false); }).catch(console.error);
+  useEffect(() => { load(); apiFetch('/clients').then(setClients).catch(console.error); }, []);
+
+  const openNew = () => { setEditItem(null); setForm(emptyForm); setModal(true); };
+  const openEdit = (v) => { setEditItem(v); setForm({ villa_number: v.villa_number, block: v.block, client_id: v.client_id || '', bedrooms: v.bedrooms || '', notes: v.notes || '' }); setModal(true); };
 
   const save = async () => {
-    await api.post('/villas', form);
-    setModal(false);
-    api.get('/villas').then(r => setVillas(r.data));
+    try {
+      const body = { ...form, client_id: form.client_id ? parseInt(form.client_id) : null, bedrooms: form.bedrooms ? parseInt(form.bedrooms) : null };
+      if (editItem) {
+        await fetch(`${API}/villas/${editItem.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(body) });
+      } else {
+        await fetch(`${API}/villas`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+      }
+      setModal(false); load();
+    } catch(e) { alert('Error: ' + e.message); }
+  };
+
+  const del = async (id) => {
+    if (!window.confirm('Delete this villa?')) return;
+    await fetch(`${API}/villas/${id}`, { method: 'DELETE', headers: authHeaders() });
+    load();
   };
 
   const filtered = villas.filter(v =>
-    v.villa_number.toLowerCase().includes(search.toLowerCase()) ||
-    v.block.toLowerCase().includes(search.toLowerCase()) ||
+    v.villa_number?.toLowerCase().includes(search.toLowerCase()) ||
+    v.block?.toLowerCase().includes(search.toLowerCase()) ||
     (v.client_name || '').toLowerCase().includes(search.toLowerCase())
   );
 
@@ -258,8 +284,8 @@ export function Villas() {
       <div className="topbar">
         <div className="topbar-title">Villas</div>
         <div className="topbar-right">
-          <input className="search-input" placeholder="Search villas..." value={search} onChange={e => setSearch(e.target.value)} />
-          <button className="btn btn-primary" onClick={() => setModal(true)}>+ Add Villa</button>
+          <input className="search-input" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
+          <button className="btn btn-primary" onClick={openNew}>+ Add Villa</button>
         </div>
       </div>
       <div className="content">
@@ -271,9 +297,9 @@ export function Villas() {
         <div className="card">
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Villa</th><th>Block</th><th>Client</th><th>Package</th><th>Monthly</th><th>Contract End</th><th>Status</th></tr></thead>
+              <thead><tr><th>Villa</th><th>Block</th><th>Client</th><th>Package</th><th>Monthly</th><th>Contract End</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
-                {loading ? <tr><td colSpan={7} className="loading">Loading...</td></tr> :
+                {loading ? <tr><td colSpan={8} className="loading">Loading...</td></tr> :
                   filtered.map(v => (
                     <tr key={v.id}>
                       <td style={{ fontWeight: 500 }}>{v.villa_number}</td>
@@ -283,6 +309,10 @@ export function Villas() {
                       <td>{v.monthly_value ? `AED ${v.monthly_value.toLocaleString()}` : '—'}</td>
                       <td>{v.end_date || '—'}</td>
                       <td>{v.contract_status ? <span className={`pill pill-${v.contract_status}`}>{v.contract_status}</span> : <span style={{ color: 'var(--text-3)', fontSize: 12 }}>No contract</span>}</td>
+                      <td style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-sm" onClick={() => openEdit(v)}>Edit</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => del(v.id)}>Delete</button>
+                      </td>
                     </tr>
                   ))
                 }
@@ -296,7 +326,7 @@ export function Villas() {
         <div className="modal-bg" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
             <div className="modal-header">
-              <div className="modal-title">Add Villa</div>
+              <div className="modal-title">{editItem ? 'Edit Villa' : 'Add Villa'}</div>
               <button className="btn btn-sm" onClick={() => setModal(false)}>✕</button>
             </div>
             <div className="form-row">
@@ -330,7 +360,7 @@ export function Villas() {
             </div>
             <div className="modal-footer">
               <button className="btn" onClick={() => setModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={save}>Save Villa</button>
+              <button className="btn btn-primary" onClick={save}>{editItem ? 'Update' : 'Save Villa'}</button>
             </div>
           </div>
         </div>
@@ -344,15 +374,31 @@ export function Clients() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', notes: '' });
+  const [editItem, setEditItem] = useState(null);
+  const emptyForm = { name: '', phone: '', email: '', address: '', notes: '' };
+  const [form, setForm] = useState(emptyForm);
 
-  const load = () => api.get('/clients').then(r => { setClients(r.data); setLoading(false); });
+  const load = () => apiFetch('/clients').then(r => { setClients(r); setLoading(false); }).catch(console.error);
   useEffect(() => { load(); }, []);
 
+  const openNew = () => { setEditItem(null); setForm(emptyForm); setModal(true); };
+  const openEdit = (c) => { setEditItem(c); setForm({ name: c.name, phone: c.phone || '', email: c.email || '', address: c.address || '', notes: c.notes || '' }); setModal(true); };
+
   const save = async () => {
-    await api.post('/clients', form);
-    setModal(false); load();
-    setForm({ name: '', phone: '', email: '', address: '', notes: '' });
+    try {
+      if (editItem) {
+        await fetch(`${API}/clients/${editItem.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(form) });
+      } else {
+        await fetch(`${API}/clients`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(form) });
+      }
+      setModal(false); load();
+    } catch(e) { alert('Error: ' + e.message); }
+  };
+
+  const del = async (id) => {
+    if (!window.confirm('Delete this client?')) return;
+    await fetch(`${API}/clients/${id}`, { method: 'DELETE', headers: authHeaders() });
+    load();
   };
 
   const initials = name => name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
@@ -362,16 +408,16 @@ export function Clients() {
       <div className="topbar">
         <div className="topbar-title">Clients</div>
         <div className="topbar-right">
-          <button className="btn btn-primary" onClick={() => setModal(true)}>+ Add Client</button>
+          <button className="btn btn-primary" onClick={openNew}>+ Add Client</button>
         </div>
       </div>
       <div className="content">
         <div className="card">
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Client</th><th>Phone</th><th>Email</th><th>Contracts</th><th>Total/mo</th></tr></thead>
+              <thead><tr><th>Client</th><th>Phone</th><th>Email</th><th>Contracts</th><th>Total/mo</th><th>Actions</th></tr></thead>
               <tbody>
-                {loading ? <tr><td colSpan={5} className="loading">Loading...</td></tr> :
+                {loading ? <tr><td colSpan={6} className="loading">Loading...</td></tr> :
                   clients.map(c => (
                     <tr key={c.id}>
                       <td>
@@ -384,6 +430,10 @@ export function Clients() {
                       <td>{c.email || '—'}</td>
                       <td>{c.contract_count || 0}</td>
                       <td>{c.total_monthly ? `AED ${Math.round(c.total_monthly).toLocaleString()}` : '—'}</td>
+                      <td style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
+                      </td>
                     </tr>
                   ))
                 }
@@ -397,7 +447,7 @@ export function Clients() {
         <div className="modal-bg" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
             <div className="modal-header">
-              <div className="modal-title">Add Client</div>
+              <div className="modal-title">{editItem ? 'Edit Client' : 'Add Client'}</div>
               <button className="btn btn-sm" onClick={() => setModal(false)}>✕</button>
             </div>
             <div className="form-group">
@@ -424,7 +474,7 @@ export function Clients() {
             </div>
             <div className="modal-footer">
               <button className="btn" onClick={() => setModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={save}>Save Client</button>
+              <button className="btn btn-primary" onClick={save}>{editItem ? 'Update' : 'Save Client'}</button>
             </div>
           </div>
         </div>
