@@ -382,18 +382,34 @@ export function Procurement() {
   const [inventory, setInventory] = useState([]);
   const [tab, setTab] = useState('orders');
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ item_name: '', quantity: '', unit: 'unit', unit_cost: '', supplier: '', expected_date: '', notes: '' });
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef ? useRef() : { current: null };
+  const [form, setForm] = useState({ item_name: '', quantity: '', unit: 'unit', unit_cost: '', supplier: '', expected_date: '', notes: '', invoice_url: '', invoice_name: '', ordered_by: '', serial_number: '', description: '' });
 
   const load = () => {
-    api.get('/procurement/orders').then(r => setOrders(r.data));
-    api.get('/procurement/inventory').then(r => setInventory(r.data));
+    fetch(`${API}/procurement/orders`, { headers: authHeaders() }).then(r => r.json()).then(setOrders).catch(console.error);
+    fetch(`${API}/procurement/inventory`, { headers: authHeaders() }).then(r => r.json()).then(setInventory).catch(console.error);
   };
+
   useEffect(() => { load(); }, []);
 
-  const save = async () => { await api.post('/procurement/orders', form); setModal(false); load(); };
+  const uploadFile = async (file) => {
+    setUploading(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(`${API}/upload`, { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('amc_token') }, body: fd });
+    const data = await res.json();
+    setUploading(false);
+    return data;
+  };
+
+  const save = async () => {
+    await fetch(`${API}/procurement/orders`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(form) });
+    setModal(false); load();
+  };
 
   const updateOrderStatus = async (id, status) => {
-    await api.put(`/procurement/orders/${id}`, { status });
+    await fetch(`${API}/procurement/orders/${id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ status }) });
     load();
   };
 
@@ -415,17 +431,21 @@ export function Procurement() {
           <div className="card">
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Order #</th><th>Item</th><th>Qty</th><th>Supplier</th><th>Total</th><th>Expected</th><th>Status</th><th>Actions</th></tr></thead>
+                <thead><tr><th>#</th><th>Serial No</th><th>Item</th><th>Description</th><th>Qty</th><th>Supplier</th><th>Ordered By</th><th>Total</th><th>Expected</th><th>Invoice</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody>
-                  {orders.map(o => (
+                  {orders.map((o, i) => (
                     <tr key={o.id}>
-                      <td style={{ fontWeight: 500 }}>{o.order_number}</td>
+                      <td>{i + 1}</td>
+                      <td style={{ fontWeight: 500 }}>{o.serial_number || o.order_number}</td>
                       <td>{o.item_name}</td>
+                      <td style={{ fontSize: 12, color: 'var(--text-2)', maxWidth: 120 }}>{o.description || '—'}</td>
                       <td>{o.quantity} {o.unit}</td>
                       <td>{o.supplier || '—'}</td>
+                      <td>{o.ordered_by || '—'}</td>
                       <td>AED {(o.total_cost || 0).toLocaleString()}</td>
                       <td>{o.expected_date || '—'}</td>
-                      <td><span className={`pill pill-${o.status === 'delivered' ? 'active' : o.status === 'in_transit' ? 'pending' : 'expiring'}`}>{o.status.replace('_',' ')}</span></td>
+                      <td>{o.invoice_url ? <a href={o.invoice_url} target="_blank" rel="noreferrer" style={{ color: 'var(--blue-text)', fontSize: 12 }}>View</a> : '—'}</td>
+                      <td><span className={`pill pill-${o.status === 'delivered' ? 'active' : o.status === 'in_transit' ? 'pending' : 'expiring'}`}>{o.status?.replace('_',' ')}</span></td>
                       <td>
                         {o.status !== 'delivered' && (
                           <button className="btn btn-sm" onClick={() => updateOrderStatus(o.id, o.status === 'pending' ? 'in_transit' : 'delivered')}>
@@ -453,12 +473,7 @@ export function Procurement() {
                       <td>{i.in_stock} {i.unit}</td>
                       <td>{i.min_level} {i.unit}</td>
                       <td>{i.unit_cost ? `AED ${i.unit_cost}` : '—'}</td>
-                      <td>
-                        {i.in_stock < i.min_level
-                          ? <span className="pill pill-urgent">Low Stock</span>
-                          : <span className="pill pill-active">OK</span>
-                        }
-                      </td>
+                      <td>{i.in_stock < i.min_level ? <span className="pill pill-urgent">Low Stock</span> : <span className="pill pill-active">OK</span>}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -470,19 +485,33 @@ export function Procurement() {
 
       {modal && (
         <div className="modal-bg" onClick={e => e.target === e.currentTarget && setModal(false)}>
-          <div className="modal">
+          <div className="modal" style={{ width: 560 }}>
             <div className="modal-header">
               <div className="modal-title">New Purchase Order</div>
               <button className="btn btn-sm" onClick={() => setModal(false)}>✕</button>
             </div>
             <div className="form-row">
               <div className="form-group">
+                <label className="form-label">Serial Number</label>
+                <input className="form-input" placeholder="e.g. SN-2026-001" value={form.serial_number} onChange={e => setForm({...form, serial_number: e.target.value})} />
+              </div>
+              <div className="form-group">
                 <label className="form-label">Item Name</label>
                 <input className="form-input" value={form.item_name} onChange={e => setForm({...form, item_name: e.target.value})} />
               </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Description</label>
+              <input className="form-input" placeholder="Full description of item" value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
+            </div>
+            <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Quantity</label>
                 <input className="form-input" type="number" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Unit Cost (AED)</label>
+                <input className="form-input" type="number" value={form.unit_cost} onChange={e => setForm({...form, unit_cost: e.target.value})} />
               </div>
             </div>
             <div className="form-row">
@@ -491,13 +520,28 @@ export function Procurement() {
                 <input className="form-input" value={form.supplier} onChange={e => setForm({...form, supplier: e.target.value})} />
               </div>
               <div className="form-group">
-                <label className="form-label">Unit Cost (AED)</label>
-                <input className="form-input" type="number" value={form.unit_cost} onChange={e => setForm({...form, unit_cost: e.target.value})} />
+                <label className="form-label">Ordered By</label>
+                <input className="form-input" value={form.ordered_by} onChange={e => setForm({...form, ordered_by: e.target.value})} />
               </div>
             </div>
             <div className="form-group">
               <label className="form-label">Expected Delivery Date</label>
               <input className="form-input" type="date" value={form.expected_date} onChange={e => setForm({...form, expected_date: e.target.value})} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Upload Invoice/Bill</label>
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} id="invoiceFile"
+                onChange={async (e) => {
+                  const data = await uploadFile(e.target.files[0]);
+                  setForm(f => ({ ...f, invoice_url: data.url, invoice_name: data.name }));
+                }} />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button className="btn btn-sm" onClick={() => document.getElementById('invoiceFile').click()}>
+                  {uploading ? 'Uploading...' : 'Choose File'}
+                </button>
+                {form.invoice_name && <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{form.invoice_name}</span>}
+                {form.invoice_url && <a href={form.invoice_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--blue-text)' }}>View</a>}
+              </div>
             </div>
             <div className="modal-footer">
               <button className="btn" onClick={() => setModal(false)}>Cancel</button>
