@@ -33,9 +33,9 @@ export default function Login() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
       <div style={{ width: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ fontSize: 32 }}>🏢</div>
-          <div style={{ fontSize: 20, fontWeight: 600, marginTop: 8 }}>AMC Manager</div>
-          <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 4 }}>Villa Service Portal</div>
+          <img src="/logo.png" alt="VAC Logo" style={{width:180, objectFit:'contain', marginBottom:8}} />
+          <div style={{ fontSize: 20, fontWeight: 600, marginTop: 8 }}>VAC AMC Management</div>
+          <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 4 }}>Service Portal</div>
         </div>
         <div className="card">
           <h2 style={{ fontSize: 16, fontWeight: 500, marginBottom: '1.25rem' }}>Sign in</h2>

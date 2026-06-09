@@ -25,9 +25,10 @@ export default function Layout() {
     <div className="app">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          <div className="logo-name">🏢 AMC Manager</div>
-          <div className="logo-sub">Villa Service Portal</div>
-        </div>
+        <img src="/logo.png" alt="VAC Logo" style={{width:'100%', maxHeight:80, objectFit:'contain', marginBottom:6}} />
+        <div className="logo-name" style={{fontSize:13, fontWeight:600}}>VAC AMC Management</div>
+        <div className="logo-sub">Service Portal</div>
+      </div>
         <nav style={{ flex: 1, overflowY: 'auto', paddingBottom: '1rem' }}>
           {navItems.map((item, i) => (
             <div key={i}>
