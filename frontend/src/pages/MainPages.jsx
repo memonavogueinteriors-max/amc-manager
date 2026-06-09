@@ -72,7 +72,14 @@ export function Contracts() {
   const [clients, setClients] = useState([]);
   const [users, setUsers] = useState([]);
   const [form, setForm] = useState({ villa_id: 0, client_id: 0, package: 'Standard', monthly_value: 1200, start_date: '', end_date: '', relationship_manager_id: null, notes: '' });
-
+const deleteContract = async (id) => {
+  if(!window.confirm('Delete this contract?')) return;
+  await fetch(`https://amc-manager-production.up.railway.app/api/contracts/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('amc_token') }
+  });
+  load();
+};
   const load = () => {
     const params = filter !== 'all' ? `?status=${filter}` : '';
     api.get('/contracts' + params).then(r => { setContracts(r.data); setLoading(false); });
@@ -147,7 +154,10 @@ const save = async () => {
                       <td>{c.start_date}</td>
                       <td>{c.end_date}</td>
                       <td>{c.rm_name || '—'}</td>
-                      <td><span className={`pill pill-${c.status}`}>{c.status}</span></td>
+                     <td><span className={`pill pill-${c.status}`}>{c.status}</span></td>
+<td style={{display:'flex',gap:6}}>
+  <button className="btn btn-sm" onClick={()=>deleteContract(c.id)}>Delete</button>
+</td>
                     </tr>
                   ))
                 }
