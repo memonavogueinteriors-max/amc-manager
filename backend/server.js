@@ -21,6 +21,7 @@ async function start() {
   app.use('/api/procurement', procurementRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/upload', require('./routes/uploads'));
+  app.use('/api/packages', require('./routes/packages'));
   app.get('/api/health', (_, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
   const PORT = process.env.PORT || 5000;
