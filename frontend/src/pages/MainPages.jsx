@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import jsPDF from 'jspdf';
 
 const API = 'https://amc-manager-production.up.railway.app/api';
 
@@ -16,14 +17,10 @@ async function apiFetch(path, options = {}) {
   return data;
 }
 
-// ── DASHBOARD ────────────────────────────────────────────
 export function Dashboard() {
   const [stats, setStats] = useState(null);
-
   useEffect(() => { apiFetch('/dashboard').then(setStats).catch(console.error); }, []);
-
   if (!stats) return <div className="loading">Loading dashboard...</div>;
-
   return (
     <div>
       <div className="topbar">
@@ -74,7 +71,6 @@ export function Dashboard() {
   );
 }
 
-// ── CONTRACTS ─────────────────────────────────────────────
 export function Contracts() {
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -130,6 +126,74 @@ export function Contracts() {
     load();
   };
 
+  const generatePDF = (c) => {
+    const doc = new jsPDF();
+    doc.setFillColor(24, 95, 165);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('AMC MANAGER', 20, 18);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Annual Maintenance Contract', 20, 28);
+    doc.text(new Date().toLocaleDateString(), 160, 28);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CONTRACT DETAILS', 20, 55);
+    doc.setDrawColor(24, 95, 165);
+    doc.setLineWidth(0.5);
+    doc.line(20, 58, 190, 58);
+    const details = [
+      ['Contract Number', c.contract_number],
+      ['Villa', `${c.villa_number}, Block ${c.block}`],
+      ['Client Name', c.client_name],
+      ['Package', c.package],
+      ['Monthly Value', `AED ${c.monthly_value?.toLocaleString()}`],
+      ['Start Date', c.start_date],
+      ['End Date', c.end_date],
+      ['Status', c.status?.toUpperCase()],
+    ];
+    doc.setFontSize(11);
+    let y = 70;
+    details.forEach(([label, value]) => {
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100, 100, 100);
+      doc.text(label + ':', 20, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      doc.text(String(value || '—'), 80, y);
+      y += 12;
+    });
+    if (c.notes) {
+      y += 5;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100, 100, 100);
+      doc.text('Notes:', 20, y);
+      y += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      doc.text(c.notes, 20, y, { maxWidth: 170 });
+      y += 20;
+    }
+    y += 20;
+    doc.setDrawColor(24, 95, 165);
+    doc.line(20, y, 90, y);
+    doc.line(120, y, 190, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Client Signature', 45, y, { align: 'center' });
+    doc.text('Authorized Signature', 155, y, { align: 'center' });
+    doc.setFillColor(24, 95, 165);
+    doc.rect(0, 280, 210, 17, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9);
+    doc.text('AMC Manager — Villa Service Portal', 105, 290, { align: 'center' });
+    doc.save(`Contract-${c.contract_number}.pdf`);
+  };
+
   const pkgValues = { Standard: 1200, Premium: 1800, Elite: 2400 };
 
   return (
@@ -167,6 +231,7 @@ export function Contracts() {
                       <td><span className={`pill pill-${c.status}`}>{c.status}</span></td>
                       <td style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
+                        <button className="btn btn-sm" style={{background:'#EAF3DE',color:'#3B6D11'}} onClick={() => generatePDF(c)}>PDF</button>
                         <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
                       </td>
                     </tr>
@@ -238,7 +303,6 @@ export function Contracts() {
   );
 }
 
-// ── VILLAS ────────────────────────────────────────────────
 export function Villas() {
   const [villas, setVillas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -369,7 +433,6 @@ export function Villas() {
   );
 }
 
-// ── CLIENTS ───────────────────────────────────────────────
 export function Clients() {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
