@@ -318,8 +318,7 @@ const generatePDF = (c) => {
   };
  
 
-  const pkgValues = { Standard: 1200, Premium: 1800, Elite: 2400 };
-
+const pkgValues = { Silver: 2500, Gold: 3500, Platinum: 5000 };
   return (
     <div>
       <div className="topbar">
@@ -394,8 +393,7 @@ const generatePDF = (c) => {
               <div className="form-group">
                 <label className="form-label">Package</label>
                 <select className="form-input" value={form.package} onChange={e => setForm({...form, package: e.target.value, monthly_value: pkgValues[e.target.value]})}>
-                  <option>Standard</option><option>Premium</option><option>Elite</option>
-                </select>
+<option>Silver</option><option>Gold</option><option>Platinum</option>                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Monthly Value (AED)</label>

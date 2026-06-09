@@ -558,58 +558,142 @@ export function Procurement() {
 export function Reports() {
   const [stats, setStats] = useState(null);
   const [contracts, setContracts] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [visits, setVisits] = useState([]);
 
   useEffect(() => {
-    api.get('/dashboard').then(r => setStats(r.data));
-    api.get('/contracts').then(r => setContracts(r.data));
+    fetch(`${API}/dashboard`, { headers: authHeaders() }).then(r => r.json()).then(setStats).catch(console.error);
+    fetch(`${API}/contracts`, { headers: authHeaders() }).then(r => r.json()).then(setContracts).catch(console.error);
+    fetch(`${API}/packages/expenses`, { headers: authHeaders() }).then(r => r.json()).then(setExpenses).catch(console.error);
+    fetch(`${API}/packages/visits`, { headers: authHeaders() }).then(r => r.json()).then(setVisits).catch(console.error);
   }, []);
 
-  const byPackage = contracts.reduce((acc, c) => {
-    acc[c.package] = (acc[c.package] || 0) + c.monthly_value;
+  const totalRevenue = stats ? stats.monthlyRevenue * 12 : 0;
+  const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+  const profit = totalRevenue - totalExpenses;
+
+  const silverContracts = contracts.filter(c => c.package === 'Silver').length;
+  const goldContracts = contracts.filter(c => c.package === 'Gold').length;
+  const platinumContracts = contracts.filter(c => c.package === 'Platinum').length;
+
+  const expenseByCategory = expenses.reduce((acc, e) => {
+    acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount || 0);
     return acc;
   }, {});
 
+  const completedVisits = visits.filter(v => v.status === 'completed').length;
+  const avgSatisfaction = visits.length > 0
+    ? (visits.reduce((sum, v) => sum + (v.client_satisfaction || 5), 0) / visits.length).toFixed(1)
+    : '—';
+
   return (
     <div>
-      <div className="topbar"><div className="topbar-title">Reports & Analytics</div></div>
+      <div className="topbar">
+        <div className="topbar-title">Reports & Analytics</div>
+      </div>
       <div className="content">
-        {stats && (
-          <div className="metrics-grid">
-            <div className="metric-card"><div className="metric-label">Monthly Revenue</div><div className="metric-val">AED {Math.round(stats.monthlyRevenue).toLocaleString()}</div></div>
-            <div className="metric-card"><div className="metric-label">Total Contracts</div><div className="metric-val">{stats.contracts}</div><div className="metric-sub">{stats.activeContracts} active</div></div>
-            <div className="metric-card"><div className="metric-label">Open Tickets</div><div className="metric-val">{stats.openTickets}</div></div>
-            <div className="metric-card"><div className="metric-label">Pending Orders</div><div className="metric-val">{stats.pendingOrders}</div></div>
+        <div className="metrics-grid">
+          <div className="metric-card">
+            <div className="metric-label">Annual Revenue</div>
+            <div className="metric-val">AED {Math.round(totalRevenue).toLocaleString()}</div>
+            <div className="metric-sub">From all active contracts</div>
           </div>
-        )}
-
-        <div className="card" style={{ marginBottom: '1rem' }}>
-          <div className="card-header"><div className="card-title">Revenue by Package</div></div>
-          {Object.entries(byPackage).map(([pkg, val]) => (
-            <div key={pkg} style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
-                <span style={{ fontWeight: 500 }}>{pkg}</span>
-                <span style={{ color: 'var(--text-2)' }}>AED {val.toLocaleString()}/mo</span>
-              </div>
-              <div className="progress-bar">
-                <div className="progress-fill" style={{ width: `${Math.min(100, (val / (stats?.monthlyRevenue || 1)) * 100)}%` }}></div>
-              </div>
+          <div className="metric-card">
+            <div className="metric-label">Total Expenses</div>
+            <div className="metric-val">AED {Math.round(totalExpenses).toLocaleString()}</div>
+            <div className="metric-sub">All recorded expenses</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Net Profit</div>
+            <div className="metric-val" style={{ color: profit >= 0 ? '#3B6D11' : '#A32D2D' }}>
+              AED {Math.round(Math.abs(profit)).toLocaleString()}
             </div>
-          ))}
+            <div className="metric-sub">{profit >= 0 ? '✅ Profit' : '❌ Loss'}</div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Avg Client Satisfaction</div>
+            <div className="metric-val" style={{ color: '#BA7517' }}>{avgSatisfaction} ★</div>
+            <div className="metric-sub">From {visits.length} service visits</div>
+          </div>
+        </div>
+
+        <div className="row2">
+          <div className="card">
+            <div className="card-header"><div className="card-title">Package Distribution</div></div>
+            {[
+              { label: 'Silver', count: silverContracts, color: '#B4B2A9', bg: '#F1EFE8' },
+              { label: 'Gold', count: goldContracts, color: '#EF9F27', bg: '#FAEEDA' },
+              { label: 'Platinum', count: platinumContracts, color: '#185FA5', bg: '#E6F1FB' },
+            ].map(p => (
+              <div key={p.label} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                  <span style={{ fontWeight: 500, color: p.color }}>{p.label}</span>
+                  <span style={{ color: 'var(--text-2)' }}>{p.count} contracts</span>
+                </div>
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${contracts.length > 0 ? (p.count / contracts.length) * 100 : 0}%`, background: p.color }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="card">
+            <div className="card-header"><div className="card-title">Expenses by Category</div></div>
+            {Object.entries(expenseByCategory).length === 0 ? (
+              <div className="empty">No expenses recorded yet</div>
+            ) : Object.entries(expenseByCategory).sort((a,b) => b[1]-a[1]).map(([cat, amt]) => (
+              <div key={cat} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                  <span style={{ fontWeight: 500 }}>{cat}</span>
+                  <span style={{ color: 'var(--text-2)' }}>AED {Math.round(amt).toLocaleString()}</span>
+                </div>
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${totalExpenses > 0 ? (amt / totalExpenses) * 100 : 0}%`, background: '#A32D2D' }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="row2">
+          <div className="card">
+            <div className="card-header"><div className="card-title">Service Visits Summary</div></div>
+            {[
+              { label: 'Total Visits', value: visits.length },
+              { label: 'Completed', value: completedVisits },
+              { label: 'Scheduled', value: visits.filter(v => v.status === 'scheduled').length },
+              { label: 'Cancelled', value: visits.filter(v => v.status === 'cancelled').length },
+            ].map(s => (
+              <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid var(--border)', fontSize: 13 }}>
+                <span style={{ color: 'var(--text-2)' }}>{s.label}</span>
+                <span style={{ fontWeight: 500 }}>{s.value}</span>
+              </div>
+            ))}
+          </div>
+          <div className="card">
+            <div className="card-header"><div className="card-title">Financial Summary</div></div>
+            {[
+              { label: 'Monthly Revenue', value: `AED ${Math.round(stats?.monthlyRevenue || 0).toLocaleString()}` },
+              { label: 'Annual Revenue', value: `AED ${Math.round(totalRevenue).toLocaleString()}` },
+              { label: 'Total Expenses', value: `AED ${Math.round(totalExpenses).toLocaleString()}` },
+              { label: 'Net Profit', value: `AED ${Math.round(Math.abs(profit)).toLocaleString()}` },
+              { label: 'Active Contracts', value: stats?.activeContracts || 0 },
+              { label: 'Expiring Contracts', value: stats?.expiringContracts || 0 },
+            ].map(s => (
+              <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid var(--border)', fontSize: 13 }}>
+                <span style={{ color: 'var(--text-2)' }}>{s.label}</span>
+                <span style={{ fontWeight: 500 }}>{s.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="card">
-          <div className="card-header"><div className="card-title">Contract Status Breakdown</div></div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
-            {[
-              { label: 'Active', count: stats?.activeContracts || 0, color: 'var(--green-light)', text: 'var(--green)' },
-              { label: 'Expiring', count: stats?.expiringContracts || 0, color: 'var(--amber-light)', text: 'var(--amber)' },
-              { label: 'Pending', count: contracts.filter(c => c.status === 'pending').length, color: 'var(--blue-light)', text: 'var(--blue-text)' },
-            ].map(s => (
-              <div key={s.label} style={{ background: s.color, borderRadius: 'var(--radius)', padding: '1rem', textAlign: 'center' }}>
-                <div style={{ fontSize: 28, fontWeight: 600, color: s.text }}>{s.count}</div>
-                <div style={{ fontSize: 12, color: s.text, marginTop: 4 }}>{s.label}</div>
-              </div>
-            ))}
+          <div className="card-header"><div className="card-title">Export Reports</div></div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <button className="btn">📊 Contract Report</button>
+            <button className="btn">💰 Revenue Summary</button>
+            <button className="btn">🚚 Procurement Report</button>
+            <button className="btn">🎫 Ticket Analytics</button>
           </div>
         </div>
       </div>
