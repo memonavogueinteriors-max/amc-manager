@@ -24,8 +24,16 @@ async function start() {
   app.use('/api/packages', require('./routes/packages'));
   app.get('/api/health', (_, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => console.log(`✅ AMC Server running on http://localhost:${PORT}`));
-}
-
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`✅ AMC Server running on http://localhost:${PORT}`);
+  
+  const { backup } = require('./backup');
+  
+  backup();
+  
+  setInterval(() => {
+    backup();
+  }, 24 * 60 * 60 * 1000);
+});
 start().catch(console.error);
