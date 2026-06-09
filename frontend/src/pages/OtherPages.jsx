@@ -185,25 +185,42 @@ export function Tickets() {
 export function Schedule() {
   const [items, setItems] = useState([]);
   const [modal, setModal] = useState(false);
-  const [linkModal, setLinkModal] = useState(false);
-const [linkForm, setLinkForm] = useState({ villa_id: '', client_name: '', client_phone: '' });
-const [generatedLink, setGeneratedLink] = useState('');
+  const [bookingModal, setBookingModal] = useState(false);
   const [villas, setVillas] = useState([]);
+  const [contracts, setContracts] = useState([]);
+  const [generatedLink, setGeneratedLink] = useState('');
   const [form, setForm] = useState({ villa_id: '', service_type: '', technician: '', scheduled_date: '', duration_hours: 2, notes: '' });
+  const [bookingForm, setBookingForm] = useState({ contract_id: '', villa_id: '', client_name: '', available_dates: ['', '', ''] });
 
-  const load = () => api.get('/schedule').then(r => setItems(r.data));
-  const [villas, setVillas] = useState([]);
-useEffect(() => { 
-  load(); 
-  fetch(`${API}/villas`, { headers: authHeaders() }).then(r => r.json()).then(setVillas).catch(console.error);
-}, []);
+  const load = () => fetch(`${API}/schedule`, { headers: authHeaders() }).then(r => r.json()).then(setItems).catch(console.error);
 
-  const save = async () => { await api.post('/schedule', form); setModal(false); load(); };
+  useEffect(() => {
+    load();
+    fetch(`${API}/villas`, { headers: authHeaders() }).then(r => r.json()).then(setVillas).catch(console.error);
+    fetch(`${API}/contracts`, { headers: authHeaders() }).then(r => r.json()).then(setContracts).catch(console.error);
+  }, []);
+
+  const save = async () => {
+    await fetch(`${API}/schedule`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(form) });
+    setModal(false); load();
+  };
 
   const updateStatus = async (id, status) => {
     const item = items.find(i => i.id === id);
-    await api.put(`/schedule/${id}`, { ...item, status });
+    await fetch(`${API}/schedule/${id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ ...item, status }) });
     load();
+  };
+
+  const generateBookingLink = async () => {
+    const dates = bookingForm.available_dates.filter(d => d !== '');
+    if (dates.length === 0) return alert('Please add at least one date');
+    const res = await fetch(`${API}/packages/booking-link`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ ...bookingForm, available_dates: dates })
+    });
+    const data = await res.json();
+    setGeneratedLink(data.link);
   };
 
   return (
@@ -211,11 +228,12 @@ useEffect(() => {
       <div className="topbar">
         <div className="topbar-title">Service Schedule</div>
         <div className="topbar-right">
+          <button className="btn" onClick={() => { setBookingModal(true); setGeneratedLink(''); }}>📅 Send Booking Link</button>
           <button className="btn btn-primary" onClick={() => setModal(true)}>+ Schedule Service</button>
         </div>
       </div>
       <div className="content">
-        <div className="card">
+        <div className="card" style={{ marginBottom: '1rem' }}>
           <div className="card-header"><div className="card-title">Upcoming Services</div></div>
           <div className="table-wrap">
             <table>
@@ -263,7 +281,7 @@ useEffect(() => {
                 <label className="form-label">Service Type</label>
                 <select className="form-input" value={form.service_type} onChange={e => setForm({...form, service_type: e.target.value})}>
                   <option value="">Select type</option>
-                  {['AC Maintenance','Plumbing Check','Electrical Audit','Annual Inspection','Quarterly Inspection','Painting','Gate Repair'].map(t => <option key={t}>{t}</option>)}
+                  {['AC Maintenance','Duct Cleaning','Electrical Audit','Annual Inspection','Quarterly Inspection','Painting','Gate Repair','Emergency Call-out'].map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
             </div>
@@ -281,6 +299,10 @@ useEffect(() => {
               <label className="form-label">Duration (hours)</label>
               <input className="form-input" type="number" step="0.5" value={form.duration_hours} onChange={e => setForm({...form, duration_hours: e.target.value})} />
             </div>
+            <div className="form-group">
+              <label className="form-label">Notes</label>
+              <textarea className="form-input" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} />
+            </div>
             <div className="modal-footer">
               <button className="btn" onClick={() => setModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={save}>Save</button>
@@ -288,10 +310,72 @@ useEffect(() => {
           </div>
         </div>
       )}
+
+      {bookingModal && (
+        <div className="modal-bg" onClick={e => e.target === e.currentTarget && setBookingModal(false)}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">Send Booking Link to Client</div>
+              <button className="btn btn-sm" onClick={() => { setBookingModal(false); setGeneratedLink(''); }}>✕</button>
+            </div>
+            {!generatedLink ? (
+              <>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Contract</label>
+                    <select className="form-input" value={bookingForm.contract_id} onChange={e => setBookingForm({...bookingForm, contract_id: e.target.value})}>
+                      <option value="">Select contract</option>
+                      {contracts.map(c => <option key={c.id} value={c.id}>{c.contract_number} — {c.client_name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Villa</label>
+                    <select className="form-input" value={bookingForm.villa_id} onChange={e => setBookingForm({...bookingForm, villa_id: e.target.value})}>
+                      <option value="">Select villa</option>
+                      {villas.map(v => <option key={v.id} value={v.id}>{v.villa_number}, Block {v.block}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Client Name</label>
+                  <input className="form-input" value={bookingForm.client_name} onChange={e => setBookingForm({...bookingForm, client_name: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Available Dates (offer 3 options)</label>
+                  {bookingForm.available_dates.map((d, i) => (
+                    <input key={i} className="form-input" type="date" value={d} style={{ marginBottom: 6 }}
+                      onChange={e => {
+                        const dates = [...bookingForm.available_dates];
+                        dates[i] = e.target.value;
+                        setBookingForm({...bookingForm, available_dates: dates});
+                      }} />
+                  ))}
+                </div>
+                <div className="modal-footer">
+                  <button className="btn" onClick={() => setBookingModal(false)}>Cancel</button>
+                  <button className="btn btn-primary" onClick={generateBookingLink}>Generate Link</button>
+                </div>
+              </>
+            ) : (
+              <div>
+                <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 8 }}>Share this link with your client — they can select their preferred date:</div>
+                <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: 8, marginBottom: 12, wordBreak: 'break-all', fontSize: 12, color: 'var(--text-2)' }}>
+                  {generatedLink}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" onClick={() => { navigator.clipboard.writeText(generatedLink); alert('Link copied!'); }}>Copy Link</button>
+                  <a href={`https://wa.me/?text=Dear Client, please select your preferred service date by clicking this link: ${encodeURIComponent(generatedLink)}`} target="_blank" rel="noreferrer">
+                    <button className="btn" style={{ background: '#25D366', color: '#fff', border: 'none' }}>Send via WhatsApp</button>
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
 // ── PROCUREMENT ───────────────────────────────────────────
 export function Procurement() {
   const [orders, setOrders] = useState([]);
