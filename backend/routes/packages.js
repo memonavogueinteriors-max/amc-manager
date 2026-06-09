@@ -1,3 +1,4 @@
+const { sendTicketAlert, sendBookingAlert } = require('../notify');
 const router = require('express').Router();
 const { getDb } = require('../db/database');
 const { auth } = require('../middleware/auth');
@@ -117,7 +118,6 @@ router.get('/ticket/:token', async (req, res) => {
     res.json(result.rows[0]);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-
 router.put('/ticket/:token', async (req, res) => {
   try {
     const { description, photo_url } = req.body;
@@ -125,8 +125,9 @@ router.put('/ticket/:token', async (req, res) => {
       'UPDATE client_tickets SET description=$1,photo_url=$2,status=$3 WHERE token=$4',
       [description, photo_url, 'submitted', req.params.token]
     );
-    res.json({ success: true });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    const ticket = await getDb().query('SELECT * FROM client_tickets WHERE token=$1', [req.params.token]);
+    if (ticket.rows[0]) sendTicketAlert(ticket.rows[0]);
+    res.json({ success: true });  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/tickets-submitted', auth, async (req, res) => {
@@ -169,6 +170,8 @@ router.put('/booking/:token', async (req, res) => {
       'UPDATE booking_links SET selected_date=$1,status=$2 WHERE token=$3',
       [selected_date, 'confirmed', req.params.token]
     );
+    const booking = await getDb().query('SELECT * FROM booking_links WHERE token=$1', [req.params.token]);
+    if (booking.rows[0]) sendBookingAlert({ ...booking.rows[0], selected_date });
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

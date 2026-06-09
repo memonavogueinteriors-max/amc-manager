@@ -7,10 +7,16 @@ async function start() {
   await initDb();
 
   const app = express();
-  app.use(cors());
+  app.use(cors({
+    origin: '*',
+    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+    allowedHeaders: ['Content-Type','Authorization']
+  }));
   app.use(express.json());
 
   app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/upload', require('./routes/uploads'));
+  app.use('/api/packages', require('./routes/packages'));
 
   const { clientsRouter, villasRouter, ticketsRouter, scheduleRouter, procurementRouter, dashboardRouter, contractsRouter } = require('./routes/all');
   app.use('/api/contracts', contractsRouter);
@@ -20,20 +26,16 @@ async function start() {
   app.use('/api/schedule', scheduleRouter);
   app.use('/api/procurement', procurementRouter);
   app.use('/api/dashboard', dashboardRouter);
-  app.use('/api/upload', require('./routes/uploads'));
-  app.use('/api/packages', require('./routes/packages'));
+
   app.get('/api/health', (_, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`✅ AMC Server running on http://localhost:${PORT}`);
-  
-  const { backup } = require('./backup');
-  
-  backup();
-  
-  setInterval(() => {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`✅ AMC Server running on http://localhost:${PORT}`);
+    const { backup } = require('./backup');
     backup();
-  }, 24 * 60 * 60 * 1000);
-});
+    setInterval(() => { backup(); }, 24 * 60 * 60 * 1000);
+  });
+}
+
 start().catch(console.error);
