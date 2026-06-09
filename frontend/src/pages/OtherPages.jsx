@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import api from '../api';
 
 // ── TICKETS ───────────────────────────────────────────────
+const generateLink = async () => {
+    const res = await fetch(`${API}/packages/ticket-link`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(linkForm)
+    });
+    const data = await res.json();
+    setGeneratedLink(data.link);
+  };
 export function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [stats, setStats] = useState({});
@@ -29,11 +38,57 @@ export function Tickets() {
   };
 
   return (
+{linkModal && (
+        <div className="modal-bg" onClick={e => e.target === e.currentTarget && setLinkModal(false)}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">Generate Client Ticket Link</div>
+              <button className="btn btn-sm" onClick={() => { setLinkModal(false); setGeneratedLink(''); }}>✕</button>
+            </div>
+            {!generatedLink ? (
+              <>
+                <div className="form-group">
+                  <label className="form-label">Villa</label>
+                  <select className="form-input" value={linkForm.villa_id} onChange={e => setLinkForm({...linkForm, villa_id: e.target.value})}>
+                    <option value="">Select villa</option>
+                    {villas.map(v => <option key={v.id} value={v.id}>{v.villa_number}, Block {v.block}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Client Name</label>
+                  <input className="form-input" value={linkForm.client_name} onChange={e => setLinkForm({...linkForm, client_name: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Client Phone</label>
+                  <input className="form-input" value={linkForm.client_phone} onChange={e => setLinkForm({...linkForm, client_phone: e.target.value})} />
+                </div>
+                <div className="modal-footer">
+                  <button className="btn" onClick={() => setLinkModal(false)}>Cancel</button>
+                  <button className="btn btn-primary" onClick={generateLink}>Generate Link</button>
+                </div>
+              </>
+            ) : (
+              <div>
+                <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: 8, marginBottom: 12, wordBreak: 'break-all', fontSize: 12, color: 'var(--text-2)' }}>
+                  {generatedLink}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="btn btn-primary" onClick={() => navigator.clipboard.writeText(generatedLink)}>Copy Link</button>
+                  <a href={`https://wa.me/?text=Dear Client, please click this link to raise a service ticket: ${encodeURIComponent(generatedLink)}`} target="_blank" rel="noreferrer">
+                    <button className="btn" style={{ background: '#25D366', color: '#fff' }}>Send via WhatsApp</button>
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     <div>
       <div className="topbar">
         <div className="topbar-title">Service Tickets</div>
         <div className="topbar-right">
-          <button className="btn btn-primary" onClick={() => setModal(true)}>+ New Ticket</button>
+         <button className="btn btn-primary" onClick={() => setModal(true)}>+ New Ticket</button>
+         <button className="btn" onClick={() => setLinkModal(true)}>🔗 Generate Client Link</button>
         </div>
       </div>
       <div className="content">
@@ -130,11 +185,18 @@ export function Tickets() {
 export function Schedule() {
   const [items, setItems] = useState([]);
   const [modal, setModal] = useState(false);
+  const [linkModal, setLinkModal] = useState(false);
+const [linkForm, setLinkForm] = useState({ villa_id: '', client_name: '', client_phone: '' });
+const [generatedLink, setGeneratedLink] = useState('');
   const [villas, setVillas] = useState([]);
   const [form, setForm] = useState({ villa_id: '', service_type: '', technician: '', scheduled_date: '', duration_hours: 2, notes: '' });
 
   const load = () => api.get('/schedule').then(r => setItems(r.data));
-  useEffect(() => { load(); api.get('/villas').then(r => setVillas(r.data)); }, []);
+  const [villas, setVillas] = useState([]);
+useEffect(() => { 
+  load(); 
+  fetch(`${API}/villas`, { headers: authHeaders() }).then(r => r.json()).then(setVillas).catch(console.error);
+}, []);
 
   const save = async () => { await api.post('/schedule', form); setModal(false); load(); };
 
