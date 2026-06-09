@@ -11,84 +11,88 @@ const generateLink = async () => {
     const data = await res.json();
     setGeneratedLink(data.link);
   };
+function ClientTicketsList() {
+  const [clientTickets, setClientTickets] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API}/packages/tickets-submitted`, { headers: authHeaders() })
+      .then(r => r.json()).then(setClientTickets).catch(console.error);
+  }, []);
+
+  return (
+    <div className="table-wrap">
+      <table>
+        <thead><tr><th>Client</th><th>Phone</th><th>Villa</th><th>Issue</th><th>Photo</th><th>Submitted</th><th>Status</th></tr></thead>
+        <tbody>
+          {clientTickets.length === 0 ? <tr><td colSpan={7} className="empty">No client tickets yet</td></tr> :
+            clientTickets.map(t => (
+              <tr key={t.id}>
+                <td style={{ fontWeight: 500 }}>{t.client_name}</td>
+                <td>{t.client_phone || '—'}</td>
+                <td>{t.villa_number ? `${t.villa_number}, Block ${t.block}` : '—'}</td>
+                <td>{t.description || '—'}</td>
+                <td>{t.photo_url ? <a href={t.photo_url} target="_blank" rel="noreferrer" style={{ color: 'var(--blue-text)', fontSize: 12 }}>View Photo</a> : '—'}</td>
+                <td>{new Date(t.created_at).toLocaleDateString()}</td>
+                <td><span className={`pill pill-${t.status === 'submitted' ? 'expiring' : 'active'}`}>{t.status}</span></td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [stats, setStats] = useState({});
   const [filter, setFilter] = useState('all');
   const [modal, setModal] = useState(false);
+  const [linkModal, setLinkModal] = useState(false);
   const [villas, setVillas] = useState([]);
+  const [linkForm, setLinkForm] = useState({ villa_id: '', client_name: '', client_phone: '' });
+  const [generatedLink, setGeneratedLink] = useState('');
   const [form, setForm] = useState({ villa_id: '', title: '', description: '', priority: 'medium' });
 
   const load = () => {
     const params = filter !== 'all' ? `?status=${filter}` : '';
-    api.get('/tickets' + params).then(r => setTickets(r.data));
-    api.get('/tickets/stats').then(r => setStats(r.data));
+    fetch(`${API}/tickets` + params, { headers: authHeaders() }).then(r => r.json()).then(setTickets).catch(console.error);
+    fetch(`${API}/tickets/stats`, { headers: authHeaders() }).then(r => r.json()).then(setStats).catch(console.error);
   };
-  useEffect(() => { load(); api.get('/villas').then(r => setVillas(r.data)); }, [filter]);
+
+  useEffect(() => {
+    load();
+    fetch(`${API}/villas`, { headers: authHeaders() }).then(r => r.json()).then(setVillas).catch(console.error);
+  }, [filter]);
+
+  const generateLink = async () => {
+    const res = await fetch(`${API}/packages/ticket-link`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify(linkForm)
+    });
+    const data = await res.json();
+    setGeneratedLink(data.link);
+  };
 
   const save = async () => {
-    await api.post('/tickets', form);
+    await fetch(`${API}/tickets`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(form) });
     setModal(false); load();
   };
 
   const updateStatus = async (id, status) => {
     const ticket = tickets.find(t => t.id === id);
-    await api.put(`/tickets/${id}`, { ...ticket, status });
+    await fetch(`${API}/tickets/${id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ ...ticket, status }) });
     load();
   };
 
   return (
-{linkModal && (
-        <div className="modal-bg" onClick={e => e.target === e.currentTarget && setLinkModal(false)}>
-          <div className="modal">
-            <div className="modal-header">
-              <div className="modal-title">Generate Client Ticket Link</div>
-              <button className="btn btn-sm" onClick={() => { setLinkModal(false); setGeneratedLink(''); }}>✕</button>
-            </div>
-            {!generatedLink ? (
-              <>
-                <div className="form-group">
-                  <label className="form-label">Villa</label>
-                  <select className="form-input" value={linkForm.villa_id} onChange={e => setLinkForm({...linkForm, villa_id: e.target.value})}>
-                    <option value="">Select villa</option>
-                    {villas.map(v => <option key={v.id} value={v.id}>{v.villa_number}, Block {v.block}</option>)}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Client Name</label>
-                  <input className="form-input" value={linkForm.client_name} onChange={e => setLinkForm({...linkForm, client_name: e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Client Phone</label>
-                  <input className="form-input" value={linkForm.client_phone} onChange={e => setLinkForm({...linkForm, client_phone: e.target.value})} />
-                </div>
-                <div className="modal-footer">
-                  <button className="btn" onClick={() => setLinkModal(false)}>Cancel</button>
-                  <button className="btn btn-primary" onClick={generateLink}>Generate Link</button>
-                </div>
-              </>
-            ) : (
-              <div>
-                <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: 8, marginBottom: 12, wordBreak: 'break-all', fontSize: 12, color: 'var(--text-2)' }}>
-                  {generatedLink}
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-primary" onClick={() => navigator.clipboard.writeText(generatedLink)}>Copy Link</button>
-                  <a href={`https://wa.me/?text=Dear Client, please click this link to raise a service ticket: ${encodeURIComponent(generatedLink)}`} target="_blank" rel="noreferrer">
-                    <button className="btn" style={{ background: '#25D366', color: '#fff' }}>Send via WhatsApp</button>
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     <div>
       <div className="topbar">
         <div className="topbar-title">Service Tickets</div>
         <div className="topbar-right">
-         <button className="btn btn-primary" onClick={() => setModal(true)}>+ New Ticket</button>
-         <button className="btn" onClick={() => setLinkModal(true)}>🔗 Generate Client Link</button>
+          <button className="btn" onClick={() => { setLinkModal(true); setGeneratedLink(''); }}>🔗 Client Link</button>
+          <button className="btn btn-primary" onClick={() => setModal(true)}>+ New Ticket</button>
         </div>
       </div>
       <div className="content">
@@ -117,10 +121,7 @@ export function Tickets() {
                       <td style={{ fontWeight: 500 }}>#{t.ticket_number}</td>
                       <td>{t.villa_number}, Block {t.block}</td>
                       <td>{t.title}</td>
-                      <td>
-                        <span className={`priority-dot dot-${t.priority}`}></span>
-                        <span className={`pill pill-${t.priority}`}>{t.priority}</span>
-                      </td>
+                      <td><span className={`priority-dot dot-${t.priority}`}></span><span className={`pill pill-${t.priority}`}>{t.priority}</span></td>
                       <td>{t.assigned_name || '—'}</td>
                       <td>{new Date(t.created_at).toLocaleDateString()}</td>
                       <td><span className={`pill pill-${t.status}`}>{t.status.replace('_',' ')}</span></td>
@@ -137,6 +138,13 @@ export function Tickets() {
               </tbody>
             </table>
           </div>
+        </div>
+
+        <div className="card" style={{ marginTop: '1rem' }}>
+          <div className="card-header">
+            <div className="card-title">Client Submitted Tickets</div>
+          </div>
+          <ClientTicketsList />
         </div>
       </div>
 
@@ -177,10 +185,55 @@ export function Tickets() {
           </div>
         </div>
       )}
+
+      {linkModal && (
+        <div className="modal-bg" onClick={e => e.target === e.currentTarget && setLinkModal(false)}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">Generate Client Ticket Link</div>
+              <button className="btn btn-sm" onClick={() => { setLinkModal(false); setGeneratedLink(''); }}>✕</button>
+            </div>
+            {!generatedLink ? (
+              <>
+                <div className="form-group">
+                  <label className="form-label">Villa</label>
+                  <select className="form-input" value={linkForm.villa_id} onChange={e => setLinkForm({...linkForm, villa_id: e.target.value})}>
+                    <option value="">Select villa</option>
+                    {villas.map(v => <option key={v.id} value={v.id}>{v.villa_number}, Block {v.block}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Client Name</label>
+                  <input className="form-input" value={linkForm.client_name} onChange={e => setLinkForm({...linkForm, client_name: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Client Phone</label>
+                  <input className="form-input" value={linkForm.client_phone} onChange={e => setLinkForm({...linkForm, client_phone: e.target.value})} />
+                </div>
+                <div className="modal-footer">
+                  <button className="btn" onClick={() => setLinkModal(false)}>Cancel</button>
+                  <button className="btn btn-primary" onClick={generateLink}>Generate Link</button>
+                </div>
+              </>
+            ) : (
+              <div>
+                <div style={{ padding: '1rem', background: 'var(--bg)', borderRadius: 8, marginBottom: 12, wordBreak: 'break-all', fontSize: 12, color: 'var(--text-2)' }}>
+                  {generatedLink}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button className="btn btn-primary" onClick={() => { navigator.clipboard.writeText(generatedLink); alert('Link copied!'); }}>Copy Link</button>
+                  <a href={`https://wa.me/?text=Dear Client, please click this link to raise a service ticket: ${encodeURIComponent(generatedLink)}`} target="_blank" rel="noreferrer">
+                    <button className="btn" style={{ background: '#25D366', color: '#fff', border: 'none' }}>Send via WhatsApp</button>
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
 // ── SCHEDULE ──────────────────────────────────────────────
 export function Schedule() {
   const [items, setItems] = useState([]);
