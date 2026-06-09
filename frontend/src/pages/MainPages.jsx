@@ -170,73 +170,153 @@ export function Contracts() {
     load();
   };
 
-  const generatePDF = (c) => {
+const generatePDF = (c) => {
     const doc = new jsPDF();
-    doc.setFillColor(24, 95, 165);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
+    const gold = [186, 148, 62];
+    const darkGold = [139, 101, 20];
+    const white = [255, 255, 255];
+    const dark = [30, 30, 30];
+    const gray = [120, 120, 120];
+
+    doc.setFillColor(...gold);
+    doc.rect(0, 0, 210, 50, 'F');
+    doc.setFillColor(245, 235, 200);
+    doc.rect(0, 48, 210, 2, 'F');
+
+    try {
+      doc.addImage('/logo.png', 'PNG', 10, 5, 40, 40);
+    } catch(e) {}
+
+    doc.setTextColor(...white);
+    doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
-    doc.text('AMC MANAGER', 20, 18);
-    doc.setFontSize(12);
+    doc.text('VOGUE AIR CARE', 60, 22);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text('Annual Maintenance Contract', 20, 28);
-    doc.text(new Date().toLocaleDateString(), 160, 28);
-    doc.setTextColor(0, 0, 0);
+    doc.text('AC · Duct Cleaning · Electrical · Plumbing · Dubai Villa Specialist', 60, 30);
+    doc.text('+971 50 127 5342', 60, 38);
+
+    doc.setFillColor(250, 248, 240);
+    doc.rect(0, 50, 210, 297, 'F');
+
+    doc.setTextColor(...darkGold);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('CONTRACT DETAILS', 20, 55);
-    doc.setDrawColor(24, 95, 165);
-    doc.setLineWidth(0.5);
-    doc.line(20, 58, 190, 58);
+    doc.text('ANNUAL MAINTENANCE CONTRACT', 105, 68, { align: 'center' });
+
+    doc.setDrawColor(...gold);
+    doc.setLineWidth(0.8);
+    doc.line(20, 72, 190, 72);
+
+    const pkg = c.package || 'Standard';
+    const pkgColors = { Silver: [150,150,150], Gold: [186,148,62], Platinum: [100,149,237] };
+    const pkgColor = pkgColors[pkg] || gold;
+
+    doc.setFillColor(...pkgColor);
+    doc.roundedRect(75, 76, 60, 12, 3, 3, 'F');
+    doc.setTextColor(...white);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`${pkg.toUpperCase()} PACKAGE`, 105, 84, { align: 'center' });
+
+    doc.setTextColor(...dark);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CONTRACT DETAILS', 20, 102);
+    doc.setDrawColor(...gold);
+    doc.setLineWidth(0.3);
+    doc.line(20, 105, 190, 105);
+
     const details = [
       ['Contract Number', c.contract_number],
       ['Villa', `${c.villa_number}, Block ${c.block}`],
       ['Client Name', c.client_name],
       ['Package', c.package],
       ['Monthly Value', `AED ${c.monthly_value?.toLocaleString()}`],
+      ['Annual Value', `AED ${Math.round((c.monthly_value || 0) * 12).toLocaleString()}`],
       ['Start Date', c.start_date],
       ['End Date', c.end_date],
       ['Status', c.status?.toUpperCase()],
     ];
-    doc.setFontSize(11);
-    let y = 70;
-    details.forEach(([label, value]) => {
+
+    let y = 115;
+    details.forEach(([label, value], i) => {
+      if (i % 2 === 0) {
+        doc.setFillColor(245, 240, 225);
+        doc.rect(20, y - 5, 170, 10, 'F');
+      }
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(100, 100, 100);
-      doc.text(label + ':', 20, y);
+      doc.setTextColor(...gray);
+      doc.setFontSize(10);
+      doc.text(label + ':', 25, y);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 0, 0);
-      doc.text(String(value || '—'), 80, y);
+      doc.setTextColor(...dark);
+      doc.text(String(value || '—'), 90, y);
       y += 12;
     });
+
     if (c.notes) {
       y += 5;
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(100, 100, 100);
-      doc.text('Notes:', 20, y);
+      doc.setTextColor(...gray);
+      doc.text('Notes:', 25, y);
       y += 8;
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 0, 0);
-      doc.text(c.notes, 20, y, { maxWidth: 170 });
-      y += 20;
+      doc.setTextColor(...dark);
+      doc.text(c.notes, 25, y, { maxWidth: 160 });
+      y += 15;
     }
-    y += 20;
-    doc.setDrawColor(24, 95, 165);
-    doc.line(20, y, 90, y);
-    doc.line(120, y, 190, y);
-    y += 8;
+
+    y += 15;
+    doc.setTextColor(...darkGold);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SERVICES INCLUDED', 20, y);
+    doc.setDrawColor(...gold);
+    doc.line(20, y + 3, 190, y + 3);
+    y += 12;
+
+    const services = {
+      Silver: ['3 AC Service Visits/Year', '2 Emergency Call-outs', '48-hour Response Time', 'Filter Clean & Coil Wash', 'Electrical & Plumbing Check (1 visit/year)'],
+      Gold: ['3 AC Service Visits/Year', '3 Emergency Call-outs', '24-hour Response Time', 'Chemical Coil Wash + Duct Cleaning', 'Electrical & Plumbing (repairs included)', 'Gas Top-up (1 unit/year)'],
+      Platinum: ['3 AC Service Visits/Year', '4 Emergency Call-outs', '4-hour Same-day Response', 'Full Chemical Deep Wash + Full Duct Clean', 'Electrical & Plumbing (2 visits + repairs)', 'Gas Top-up All Units', 'Before & After Photo Report']
+    };
+
+    const pkgServices = services[pkg] || services.Silver;
     doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text('Client Signature', 45, y, { align: 'center' });
-    doc.text('Authorized Signature', 155, y, { align: 'center' });
-    doc.setFillColor(24, 95, 165);
-    doc.rect(0, 280, 210, 17, 'F');
-    doc.setTextColor(255, 255, 255);
+    pkgServices.forEach(s => {
+      doc.setTextColor(...gold);
+      doc.text('✓', 25, y);
+      doc.setTextColor(...dark);
+      doc.setFont('helvetica', 'normal');
+      doc.text(s, 33, y);
+      y += 9;
+    });
+
+    y += 10;
+    doc.setDrawColor(...gold);
+    doc.setLineWidth(0.5);
+    doc.line(20, y, 85, y);
+    doc.line(125, y, 190, y);
+    y += 8;
     doc.setFontSize(9);
-    doc.text('AMC Manager — Villa Service Portal', 105, 290, { align: 'center' });
-    doc.save(`Contract-${c.contract_number}.pdf`);
+    doc.setTextColor(...gray);
+    doc.text('Client Signature & Date', 52, y, { align: 'center' });
+    doc.text('Vogue Air Care Representative', 157, y, { align: 'center' });
+
+    doc.setFillColor(...gold);
+    doc.rect(0, 272, 210, 25, 'F');
+    doc.setTextColor(...white);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('VOGUE AIR CARE — Dubai\'s Villa AC Specialist', 105, 281, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text('+971 50 127 5342 | AC · Duct Cleaning · Electrical · Plumbing', 105, 289, { align: 'center' });
+    doc.text('All prices fixed. No hidden charges. 24-hour workmanship guarantee.', 105, 293, { align: 'center' });
+
+    doc.save(`VAC-Contract-${c.contract_number}.pdf`);
   };
+ 
 
   const pkgValues = { Standard: 1200, Premium: 1800, Elite: 2400 };
 
