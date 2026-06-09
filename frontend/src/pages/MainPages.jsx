@@ -71,7 +71,7 @@ export function Contracts() {
   const [villas, setVillas] = useState([]);
   const [clients, setClients] = useState([]);
   const [users, setUsers] = useState([]);
-  const [form, setForm] = useState({ villa_id: '', client_id: '', package: 'Standard', monthly_value: 1200, start_date: '', end_date: '', relationship_manager_id: '', notes: '' });
+  const [form, setForm] = useState({ villa_id: 0, client_id: 0, package: 'Standard', monthly_value: 1200, start_date: '', end_date: '', relationship_manager_id: null, notes: '' });
 
   const load = () => {
     const params = filter !== 'all' ? `?status=${filter}` : '';
@@ -86,10 +86,28 @@ export function Contracts() {
 
 const save = async () => {
     try {
-      await api.post('/contracts', form);
-      setModal(false); load();
+      await fetch('https://amc-manager-production.up.railway.app/api/contracts', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + localStorage.getItem('amc_token')
+        },
+        body: JSON.stringify({
+          villa_id: parseInt(form.villa_id),
+          client_id: parseInt(form.client_id),
+          package: form.package,
+          monthly_value: parseFloat(form.monthly_value),
+          start_date: form.start_date,
+          end_date: form.end_date,
+          relationship_manager_id: form.relationship_manager_id ? parseInt(form.relationship_manager_id) : null,
+          notes: form.notes || ''
+        })
+      }).then(r => r.json()).then(data => {
+        if(data.error) throw new Error(data.error);
+        setModal(false); load();
+      });
     } catch(e) {
-      alert('Error: ' + (e.response?.data?.error || e.message));
+      alert('Error: ' + e.message);
     }
     setForm({ villa_id: '', client_id: '', package: 'Standard', monthly_value: 1200, start_date: '', end_date: '', relationship_manager_id: '', notes: '' });
   };
