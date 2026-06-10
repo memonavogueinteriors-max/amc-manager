@@ -435,36 +435,10 @@ export function Villas() {
   const emptyForm = { villa_number: '', block: 'A', client_id: '', bedrooms: '', notes: '' };
   const [form, setForm] = useState(emptyForm);
 
-  const load = () => apiFetch('/villas').then(r => { setVillas(r); setLoading(false); }).catch(console.error);
+ const load = () => apiFetch('/villas').then(r => { setVillas(r); setLoading(false); }).catch(console.error);
   useEffect(() => {
-    apiFetch('/dashboard').then(setStats).catch(console.error);
-    apiFetch('/packages/expenses').then(setExpenses).catch(console.error);
-    apiFetch('/packages').then(setPackages).catch(console.error);
-
-    if ('Notification' in window) {
-      Notification.requestPermission();
-    }
-
-    let lastCount = 0;
-    const checkNewTickets = async () => {
-      try {
-        const data = await apiFetch('/packages/tickets-submitted');
-        const newCount = data.filter(t => t.status === 'submitted').length;
-        if (newCount > lastCount && lastCount !== 0) {
-          if (Notification.permission === 'granted') {
-            new Notification('🔴 New Client Ticket!', {
-              body: 'A client has raised a new service ticket. Click to view.',
-              icon: '/logo.png'
-            });
-          }
-        }
-        lastCount = newCount;
-      } catch(e) {}
-    };
-
-    checkNewTickets();
-    const interval = setInterval(checkNewTickets, 30000);
-    return () => clearInterval(interval);
+    load();
+    apiFetch('/clients').then(setClients).catch(console.error);
   }, []);
 
   const openNew = () => { setEditItem(null); setForm(emptyForm); setModal(true); };
