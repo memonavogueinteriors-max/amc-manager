@@ -1,16 +1,11 @@
-import { useState, useEffect } from 'react';
-import api from '../api';
+import { useState, useEffect, useRef } from 'react';
 
-// ── TICKETS ───────────────────────────────────────────────
-const generateLink = async () => {
-    const res = await fetch(`${API}/packages/ticket-link`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify(linkForm)
-    });
-    const data = await res.json();
-    setGeneratedLink(data.link);
-  };
+const API = 'https://amc-manager-production.up.railway.app/api';
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('amc_token') };
+}
+
 function ClientTicketsList() {
   const [clientTickets, setClientTickets] = useState([]);
 
@@ -234,7 +229,7 @@ export function Tickets() {
     </div>
   );
 }
-// ── SCHEDULE ──────────────────────────────────────────────
+
 export function Schedule() {
   const [items, setItems] = useState([]);
   const [modal, setModal] = useState(false);
@@ -429,14 +424,14 @@ export function Schedule() {
     </div>
   );
 }
-// ── PROCUREMENT ───────────────────────────────────────────
+
 export function Procurement() {
   const [orders, setOrders] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [tab, setTab] = useState('orders');
   const [modal, setModal] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const fileRef = useRef ? useRef() : { current: null };
+  const fileRef = useRef();
   const [form, setForm] = useState({ item_name: '', quantity: '', unit: 'unit', unit_cost: '', supplier: '', expected_date: '', notes: '', invoice_url: '', invoice_name: '', ordered_by: '', serial_number: '', description: '' });
 
   const load = () => {
@@ -486,28 +481,30 @@ export function Procurement() {
               <table>
                 <thead><tr><th>#</th><th>Serial No</th><th>Item</th><th>Description</th><th>Qty</th><th>Supplier</th><th>Ordered By</th><th>Total</th><th>Expected</th><th>Invoice</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody>
-                  {orders.map((o, i) => (
-                    <tr key={o.id}>
-                      <td>{i + 1}</td>
-                      <td style={{ fontWeight: 500 }}>{o.serial_number || o.order_number}</td>
-                      <td>{o.item_name}</td>
-                      <td style={{ fontSize: 12, color: 'var(--text-2)', maxWidth: 120 }}>{o.description || '—'}</td>
-                      <td>{o.quantity} {o.unit}</td>
-                      <td>{o.supplier || '—'}</td>
-                      <td>{o.ordered_by || '—'}</td>
-                      <td>AED {(o.total_cost || 0).toLocaleString()}</td>
-                      <td>{o.expected_date || '—'}</td>
-                      <td>{o.invoice_url ? <a href={o.invoice_url} target="_blank" rel="noreferrer" style={{ color: 'var(--blue-text)', fontSize: 12 }}>View</a> : '—'}</td>
-                      <td><span className={`pill pill-${o.status === 'delivered' ? 'active' : o.status === 'in_transit' ? 'pending' : 'expiring'}`}>{o.status?.replace('_',' ')}</span></td>
-                      <td>
-                        {o.status !== 'delivered' && (
-                          <button className="btn btn-sm" onClick={() => updateOrderStatus(o.id, o.status === 'pending' ? 'in_transit' : 'delivered')}>
-                            {o.status === 'pending' ? 'Mark Shipped' : 'Mark Delivered'}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {orders.length === 0 ? <tr><td colSpan={12} className="empty">No orders yet</td></tr> :
+                    orders.map((o, i) => (
+                      <tr key={o.id}>
+                        <td>{i + 1}</td>
+                        <td style={{ fontWeight: 500 }}>{o.serial_number || o.order_number}</td>
+                        <td>{o.item_name}</td>
+                        <td style={{ fontSize: 12, color: 'var(--text-2)', maxWidth: 120 }}>{o.description || '—'}</td>
+                        <td>{o.quantity} {o.unit}</td>
+                        <td>{o.supplier || '—'}</td>
+                        <td>{o.ordered_by || '—'}</td>
+                        <td>AED {(o.total_cost || 0).toLocaleString()}</td>
+                        <td>{o.expected_date || '—'}</td>
+                        <td>{o.invoice_url ? <a href={o.invoice_url} target="_blank" rel="noreferrer" style={{ color: 'var(--blue-text)', fontSize: 12 }}>View</a> : '—'}</td>
+                        <td><span className={`pill pill-${o.status === 'delivered' ? 'active' : o.status === 'in_transit' ? 'pending' : 'expiring'}`}>{o.status?.replace('_',' ')}</span></td>
+                        <td>
+                          {o.status !== 'delivered' && (
+                            <button className="btn btn-sm" onClick={() => updateOrderStatus(o.id, o.status === 'pending' ? 'in_transit' : 'delivered')}>
+                              {o.status === 'pending' ? 'Mark Shipped' : 'Mark Delivered'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  }
                 </tbody>
               </table>
             </div>
@@ -583,13 +580,12 @@ export function Procurement() {
             </div>
             <div className="form-group">
               <label className="form-label">Upload Invoice/Bill</label>
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} id="invoiceFile"
-                onChange={async (e) => {
-                  const data = await uploadFile(e.target.files[0]);
-                  setForm(f => ({ ...f, invoice_url: data.url, invoice_name: data.name }));
-                }} />
+              <input type="file" ref={fileRef} accept=".pdf,.jpg,.jpeg,.png" onChange={async (e) => {
+                const data = await uploadFile(e.target.files[0]);
+                setForm(f => ({ ...f, invoice_url: data.url, invoice_name: data.name }));
+              }} style={{ display: 'none' }} />
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button className="btn btn-sm" onClick={() => document.getElementById('invoiceFile').click()}>
+                <button className="btn btn-sm" onClick={() => fileRef.current.click()}>
                   {uploading ? 'Uploading...' : 'Choose File'}
                 </button>
                 {form.invoice_name && <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{form.invoice_name}</span>}
@@ -607,7 +603,6 @@ export function Procurement() {
   );
 }
 
-// ── REPORTS ───────────────────────────────────────────────
 export function Reports() {
   const [stats, setStats] = useState(null);
   const [contracts, setContracts] = useState([]);
@@ -624,16 +619,13 @@ export function Reports() {
   const totalRevenue = stats ? stats.monthlyRevenue * 12 : 0;
   const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
   const profit = totalRevenue - totalExpenses;
-
   const silverContracts = contracts.filter(c => c.package === 'Silver').length;
   const goldContracts = contracts.filter(c => c.package === 'Gold').length;
   const platinumContracts = contracts.filter(c => c.package === 'Platinum').length;
-
   const expenseByCategory = expenses.reduce((acc, e) => {
     acc[e.category] = (acc[e.category] || 0) + parseFloat(e.amount || 0);
     return acc;
   }, {});
-
   const completedVisits = visits.filter(v => v.status === 'completed').length;
   const avgSatisfaction = visits.length > 0
     ? (visits.reduce((sum, v) => sum + (v.client_satisfaction || 5), 0) / visits.length).toFixed(1)
@@ -674,9 +666,9 @@ export function Reports() {
           <div className="card">
             <div className="card-header"><div className="card-title">Package Distribution</div></div>
             {[
-              { label: 'Silver', count: silverContracts, color: '#B4B2A9', bg: '#F1EFE8' },
-              { label: 'Gold', count: goldContracts, color: '#EF9F27', bg: '#FAEEDA' },
-              { label: 'Platinum', count: platinumContracts, color: '#185FA5', bg: '#E6F1FB' },
+              { label: 'Silver', count: silverContracts, color: '#B4B2A9' },
+              { label: 'Gold', count: goldContracts, color: '#EF9F27' },
+              { label: 'Platinum', count: platinumContracts, color: '#185FA5' },
             ].map(p => (
               <div key={p.label} style={{ marginBottom: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
