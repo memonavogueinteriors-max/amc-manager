@@ -326,7 +326,7 @@ const navigate = useNavigate();
     className="btn btn-sm"
     onClick={() => navigate(`/contracts/${c.id}`)}
   >
-    View
+    AMC Details
   </button>
 
   <button
