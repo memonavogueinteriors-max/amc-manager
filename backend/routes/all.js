@@ -514,7 +514,21 @@ contractsRouter.get('/recycle', auth, async (req, res) => {
     res.json(result.rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-
+contractsRouter.get('/:id', auth, async (req, res) => {
+  try {
+    const result = await getDb().query(`
+      SELECT c.*, v.villa_number, v.block, cl.name as client_name,
+             cl.phone as client_phone, sp.name as sales_person_name
+      FROM contracts c
+      LEFT JOIN villas v ON c.villa_id = v.id
+      LEFT JOIN clients cl ON c.client_id = cl.id
+      LEFT JOIN users sp ON c.sales_person_id = sp.id
+      WHERE c.id = $1
+    `, [req.params.id]);
+    if (!result.rows[0]) return res.status(404).json({ error: 'Not found' });
+    res.json(result.rows[0]);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
 contractsRouter.put('/recycle/:id', auth, async (req, res) => {
   try {
     await getDb().query('UPDATE contracts SET deleted=false WHERE id=$1', [req.params.id]);
