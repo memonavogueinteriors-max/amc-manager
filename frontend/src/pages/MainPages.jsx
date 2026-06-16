@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import jsPDF from 'jspdf';
+import { useNavigate } from 'react-router-dom';import jsPDF from 'jspdf';
 
 const API = 'https://amc-manager-production.up.railway.app/api';
 
@@ -120,6 +120,7 @@ export function Dashboard() {
 }
 
 export function Contracts() {
+const navigate = useNavigate();
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -321,10 +322,35 @@ export function Contracts() {
                           </select>
                         </td>
                         <td style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
-                          <button className="btn btn-sm" style={{background:'#EAF3DE',color:'#3B6D11'}} onClick={() => generatePDF(c)}>PDF</button>
-                          <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
-                        </td>
+  <button
+    className="btn btn-sm"
+    onClick={() => navigate(`/contracts/${c.id}`)}
+  >
+    View
+  </button>
+
+  <button
+    className="btn btn-sm"
+    onClick={() => openEdit(c)}
+  >
+    Edit
+  </button>
+
+  <button
+    className="btn btn-sm"
+    style={{ background:'#EAF3DE', color:'#3B6D11' }}
+    onClick={() => generatePDF(c)}
+  >
+    PDF
+  </button>
+
+  <button
+    className="btn btn-sm btn-danger"
+    onClick={() => del(c.id)}
+  >
+    Delete
+  </button>
+</td>
                       </tr>
                     );
                   })
