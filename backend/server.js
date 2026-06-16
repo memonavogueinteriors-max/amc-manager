@@ -7,16 +7,14 @@ async function start() {
   await initDb();
 
   const app = express();
-  app.use(cors({
-    origin: '*',
-    methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization']
-  }));
+  app.use(cors({ origin: '*', methods: ['GET','POST','PUT','DELETE','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
   app.use(express.json());
 
   app.use('/api/auth', require('./routes/auth'));
   app.use('/api/upload', require('./routes/uploads'));
   app.use('/api/packages', require('./routes/packages'));
+  app.use('/api/users', require('./routes/users'));
+  app.use('/api/service-reports', require('./routes/reports'));
 
   const { clientsRouter, villasRouter, ticketsRouter, scheduleRouter, procurementRouter, dashboardRouter, contractsRouter } = require('./routes/all');
   app.use('/api/contracts', contractsRouter);

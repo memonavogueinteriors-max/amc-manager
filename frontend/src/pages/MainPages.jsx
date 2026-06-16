@@ -26,6 +26,31 @@ export function Dashboard() {
     apiFetch('/dashboard').then(setStats).catch(console.error);
     apiFetch('/packages/expenses').then(setExpenses).catch(console.error);
     apiFetch('/packages').then(setPackages).catch(console.error);
+
+    if ('Notification' in window) {
+      Notification.requestPermission();
+    }
+
+    let lastCount = 0;
+    const checkNewTickets = async () => {
+      try {
+        const data = await apiFetch('/packages/tickets-submitted');
+        const newCount = data.filter(t => t.status === 'submitted').length;
+        if (newCount > lastCount && lastCount !== 0) {
+          if (Notification.permission === 'granted') {
+            new Notification('🔴 New Client Ticket!', {
+              body: 'A client has raised a new service ticket. Click to view.',
+              icon: '/logo.png'
+            });
+          }
+        }
+        lastCount = newCount;
+      } catch(e) {}
+    };
+
+    checkNewTickets();
+    const interval = setInterval(checkNewTickets, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   if (!stats) return <div className="loading">Loading dashboard...</div>;
@@ -33,9 +58,6 @@ export function Dashboard() {
   const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
   const totalRevenue = stats.monthlyRevenue * 12;
   const profit = totalRevenue - totalExpenses;
-  const silverCount = packages.filter(p => p.tier === 'Silver').length;
-  const goldCount = packages.filter(p => p.tier === 'Gold').length;
-  const platinumCount = packages.filter(p => p.tier === 'Platinum').length;
 
   return (
     <div>
@@ -123,8 +145,15 @@ export function Contracts() {
   const [editItem, setEditItem] = useState(null);
   const [villas, setVillas] = useState([]);
   const [clients, setClients] = useState([]);
-  const emptyForm = { villa_id: '', client_id: '', package: 'Standard', monthly_value: 1200, start_date: '', end_date: '', notes: '' };
+  const [salesUsers, setSalesUsers] = useState([]);
+  const emptyForm = {
+    villa_id: '', client_id: '', package: 'Silver', monthly_value: 425,
+    start_date: '', end_date: '', property_type: 'Villa',
+    sales_person_id: '', commission_amount: 0, notes: ''
+  };
   const [form, setForm] = useState(emptyForm);
+
+  const pkgValues = { 'Silver': 425, 'Gold': 546, 'Platinum': 712 };
 
   const load = () => {
     const params = filter !== 'all' ? `?status=${filter}` : '';
@@ -135,12 +164,21 @@ export function Contracts() {
     load();
     apiFetch('/villas').then(setVillas).catch(console.error);
     apiFetch('/clients').then(setClients).catch(console.error);
+    fetch(`${API}/users`, { headers: authHeaders() })
+      .then(r => r.json())
+      .then(u => setSalesUsers(u.filter(x => x.role === 'sales' || x.role === 'manager')))
+      .catch(console.error);
   }, [filter]);
 
   const openNew = () => { setEditItem(null); setForm(emptyForm); setModal(true); };
   const openEdit = (c) => {
     setEditItem(c);
-    setForm({ villa_id: c.villa_id, client_id: c.client_id, package: c.package, monthly_value: c.monthly_value, start_date: c.start_date, end_date: c.end_date, notes: c.notes || '' });
+    setForm({
+      villa_id: c.villa_id, client_id: c.client_id, package: c.package,
+      monthly_value: c.monthly_value, start_date: c.start_date, end_date: c.end_date,
+      property_type: c.property_type || 'Villa', sales_person_id: c.sales_person_id || '',
+      commission_amount: c.commission_amount || 0, notes: c.notes || ''
+    });
     setModal(true);
   };
 
@@ -153,6 +191,9 @@ export function Contracts() {
         monthly_value: parseFloat(form.monthly_value),
         start_date: form.start_date,
         end_date: form.end_date,
+        property_type: form.property_type || 'Villa',
+        sales_person_id: form.sales_person_id ? parseInt(form.sales_person_id) : null,
+        commission_amount: parseFloat(form.commission_amount || 0),
         notes: form.notes || ''
       };
       if (editItem) {
@@ -170,7 +211,7 @@ export function Contracts() {
     load();
   };
 
-const generatePDF = (c) => {
+  const generatePDF = (c) => {
     const doc = new jsPDF();
     const gold = [186, 148, 62];
     const darkGold = [139, 101, 20];
@@ -183,9 +224,7 @@ const generatePDF = (c) => {
     doc.setFillColor(245, 235, 200);
     doc.rect(0, 48, 210, 2, 'F');
 
-    try {
-      doc.addImage('/logo.png', 'PNG', 10, 5, 40, 40);
-    } catch(e) {}
+    try { doc.addImage('/logo.png', 'PNG', 10, 5, 40, 40); } catch(e) {}
 
     doc.setTextColor(...white);
     doc.setFontSize(20);
@@ -208,7 +247,7 @@ const generatePDF = (c) => {
     doc.setLineWidth(0.8);
     doc.line(20, 72, 190, 72);
 
-    const pkg = c.package || 'Standard';
+    const pkg = c.package || 'Silver';
     const pkgColors = { Silver: [150,150,150], Gold: [186,148,62], Platinum: [100,149,237] };
     const pkgColor = pkgColors[pkg] || gold;
 
@@ -229,6 +268,8 @@ const generatePDF = (c) => {
 
     const details = [
       ['Contract Number', c.contract_number],
+      ['File Number', c.file_number || '—'],
+      ['Property Type', c.property_type || 'Villa'],
       ['Villa', `${c.villa_number}, Block ${c.block}`],
       ['Client Name', c.client_name],
       ['Package', c.package],
@@ -241,10 +282,7 @@ const generatePDF = (c) => {
 
     let y = 115;
     details.forEach(([label, value], i) => {
-      if (i % 2 === 0) {
-        doc.setFillColor(245, 240, 225);
-        doc.rect(20, y - 5, 170, 10, 'F');
-      }
+      if (i % 2 === 0) { doc.setFillColor(245, 240, 225); doc.rect(20, y - 5, 170, 10, 'F'); }
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...gray);
       doc.setFontSize(10);
@@ -255,19 +293,7 @@ const generatePDF = (c) => {
       y += 12;
     });
 
-    if (c.notes) {
-      y += 5;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...gray);
-      doc.text('Notes:', 25, y);
-      y += 8;
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...dark);
-      doc.text(c.notes, 25, y, { maxWidth: 160 });
-      y += 15;
-    }
-
-    y += 15;
+    y += 5;
     doc.setTextColor(...darkGold);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
@@ -277,20 +303,21 @@ const generatePDF = (c) => {
     y += 12;
 
     const services = {
-      Silver: ['3 AC Service Visits/Year', '2 Emergency Call-outs', '48-hour Response Time', 'Filter Clean & Coil Wash', 'Electrical & Plumbing Check (1 visit/year)'],
-      Gold: ['3 AC Service Visits/Year', '3 Emergency Call-outs', '24-hour Response Time', 'Chemical Coil Wash + Duct Cleaning', 'Electrical & Plumbing (repairs included)', 'Gas Top-up (1 unit/year)'],
-      Platinum: ['3 AC Service Visits/Year', '4 Emergency Call-outs', '4-hour Same-day Response', 'Full Chemical Deep Wash + Full Duct Clean', 'Electrical & Plumbing (2 visits + repairs)', 'Gas Top-up All Units', 'Before & After Photo Report']
+      Silver: ['3 AC Service Visits/Year (April, July, October)', '1 Emergency AC Call-out/year', '1 Emergency Plumbing Call-out/year', '1 Emergency Electrical Call-out/year', '4-hour Emergency Response Time', 'Chemical Coil Deep Clean (1x/year)', 'Duct Chemical Cleaning included', 'Basic Plumbing Health Check', 'Service Completion Report every visit', '24-Hr Workmanship Guarantee'],
+      Gold: ['3 AC Service Visits/Year (April, July, October)', '2 Emergency AC Call-outs/year', '2 Emergency Plumbing Call-outs/year', '2 Emergency Electrical Call-outs/year', '3-hour Emergency Response Time', 'Chemical Coil Deep Clean (1x/year)', 'RoboTech Duct Inspection (partial)', 'Full Plumbing & Electrical Health Check', 'Priority Scheduling', '10% Parts Discount', '24-Hr Workmanship Guarantee'],
+      Platinum: ['3 AC Service Visits/Year (April, July, October)', '3 Emergency AC Call-outs/year', '3 Emergency Plumbing Call-outs/year', '3 Emergency Electrical Call-outs/year', '2-hour Emergency Response Time', 'RoboTech Full Duct Inspection & Clean', 'Full Plumbing & Electrical Health Check', 'VIP Scheduling — First Slot', 'Dedicated Account Manager', 'Annual Asset Health Report', '15% Parts Discount', '24-Hr Workmanship Guarantee']
     };
 
     const pkgServices = services[pkg] || services.Silver;
     doc.setFontSize(10);
     pkgServices.forEach(s => {
-      doc.setTextColor(...gold);
+      doc.setTextColor(186, 148, 62);
       doc.text('✓', 25, y);
       doc.setTextColor(...dark);
       doc.setFont('helvetica', 'normal');
       doc.text(s, 33, y);
       y += 9;
+      if (y > 265) { doc.addPage(); y = 20; }
     });
 
     y += 10;
@@ -309,16 +336,14 @@ const generatePDF = (c) => {
     doc.setTextColor(...white);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('VOGUE AIR CARE — Dubai\'s Villa AC Specialist', 105, 281, { align: 'center' });
+    doc.text("VOGUE AIR CARE — Dubai's Villa AC Specialist", 105, 281, { align: 'center' });
     doc.setFont('helvetica', 'normal');
     doc.text('+971 50 127 5342 | AC · Duct Cleaning · Electrical · Plumbing', 105, 289, { align: 'center' });
-    doc.text('All prices fixed. No hidden charges. 24-hour workmanship guarantee.', 105, 293, { align: 'center' });
+    doc.text('All prices excl. 5% VAT. Fixed annual fees. No hidden charges.', 105, 293, { align: 'center' });
 
     doc.save(`VAC-Contract-${c.contract_number}.pdf`);
   };
- 
 
-const pkgValues = { Silver: 2500, Gold: 3500, Platinum: 5000 };
   return (
     <div>
       <div className="topbar">
@@ -329,7 +354,7 @@ const pkgValues = { Silver: 2500, Gold: 3500, Platinum: 5000 };
       </div>
       <div className="content">
         <div className="filter-row">
-          {['all', 'active', 'expiring', 'pending'].map(f => (
+          {['all', 'active', 'expiring', 'pending', 'processing', 'ended'].map(f => (
             <span key={f} className={`chip${filter === f ? ' active' : ''}`} onClick={() => setFilter(f)}>
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </span>
@@ -338,20 +363,51 @@ const pkgValues = { Silver: 2500, Gold: 3500, Platinum: 5000 };
         <div className="card">
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Contract #</th><th>Villa</th><th>Client</th><th>Package</th><th>Monthly</th><th>Start</th><th>End</th><th>Status</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Contract #</th><th>File #</th><th>Villa</th><th>Client</th><th>Property</th><th>Package</th><th>Monthly</th><th>Start</th><th>End</th><th>Next Service</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
-                {loading ? <tr><td colSpan={9} className="loading">Loading...</td></tr> :
-                  contracts.length === 0 ? <tr><td colSpan={9} className="empty">No contracts found</td></tr> :
+                {loading ? <tr><td colSpan={12} className="loading">Loading...</td></tr> :
+                  contracts.length === 0 ? <tr><td colSpan={12} className="empty">No contracts found</td></tr> :
                   contracts.map(c => (
                     <tr key={c.id}>
                       <td style={{ fontWeight: 500 }}>{c.contract_number}</td>
+                      <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{c.file_number || '—'}</td>
                       <td>{c.villa_number}, Block {c.block}</td>
                       <td>{c.client_name}</td>
-                      <td><span className={`pill pill-${c.package === 'Elite' ? 'pending' : c.package === 'Premium' ? 'active' : 'resolved'}`}>{c.package}</span></td>
+                      <td style={{ fontSize: 12 }}>{c.property_type || 'Villa'}</td>
+                      <td>
+                        <span style={{
+                          background: c.package === 'Platinum' ? '#E6F1FB' : c.package === 'Gold' ? '#FAEEDA' : '#F1EFE8',
+                          color: c.package === 'Platinum' ? '#185FA5' : c.package === 'Gold' ? '#854F0B' : '#5F5E5A',
+                          padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500
+                        }}>{c.package}</span>
+                      </td>
                       <td>AED {c.monthly_value?.toLocaleString()}</td>
                       <td>{c.start_date}</td>
                       <td>{c.end_date}</td>
-                      <td><span className={`pill pill-${c.status}`}>{c.status}</span></td>
+                      <td style={{ fontSize: 12, color: '#BA7517' }}>{c.next_service_date || '—'}</td>
+                      <td>
+                        <select
+                          value={c.status}
+                          onChange={async (e) => {
+                            await fetch(`${API}/contracts/${c.id}`, {
+                              method: 'PUT', headers: authHeaders(),
+                              body: JSON.stringify({ package: c.package, monthly_value: c.monthly_value, start_date: c.start_date, end_date: c.end_date, status: e.target.value, notes: c.notes || '' })
+                            });
+                            load();
+                          }}
+                          style={{
+                            padding: '3px 6px', borderRadius: 6, border: '0.5px solid var(--border-md)',
+                            background: c.status === 'active' ? '#EAF3DE' : c.status === 'ended' ? '#FCEBEB' : c.status === 'processing' ? '#FAEEDA' : '#E6F1FB',
+                            color: c.status === 'active' ? '#3B6D11' : c.status === 'ended' ? '#A32D2D' : c.status === 'processing' ? '#854F0B' : '#185FA5',
+                            fontSize: 12, fontWeight: 500, cursor: 'pointer'
+                          }}>
+                          <option value="active">Active</option>
+                          <option value="processing">Processing</option>
+                          <option value="ended">Ended</option>
+                          <option value="expiring">Expiring</option>
+                          <option value="pending">Pending</option>
+                        </select>
+                      </td>
                       <td style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
                         <button className="btn btn-sm" style={{background:'#EAF3DE',color:'#3B6D11'}} onClick={() => generatePDF(c)}>PDF</button>
@@ -368,7 +424,7 @@ const pkgValues = { Silver: 2500, Gold: 3500, Platinum: 5000 };
 
       {modal && (
         <div className="modal-bg" onClick={e => e.target === e.currentTarget && setModal(false)}>
-          <div className="modal">
+          <div className="modal" style={{ width: 560 }}>
             <div className="modal-header">
               <div className="modal-title">{editItem ? 'Edit Contract' : 'New AMC Contract'}</div>
               <button className="btn btn-sm" onClick={() => setModal(false)}>✕</button>
@@ -391,24 +447,55 @@ const pkgValues = { Silver: 2500, Gold: 3500, Platinum: 5000 };
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Package</label>
-                <select className="form-input" value={form.package} onChange={e => setForm({...form, package: e.target.value, monthly_value: pkgValues[e.target.value]})}>
-<option>Silver</option><option>Gold</option><option>Platinum</option>                </select>
+                <label className="form-label">Property Type</label>
+                <select className="form-input" value={form.property_type} onChange={e => setForm({...form, property_type: e.target.value})}>
+                  <option>Villa</option>
+                  <option>Apartment</option>
+                  <option>Townhouse</option>
+                  <option>Estate</option>
+                  <option>Penthouse</option>
+                </select>
               </div>
+              <div className="form-group">
+                <label className="form-label">Package</label>
+                <select className="form-input" value={form.package} onChange={e => setForm({...form, package: e.target.value, monthly_value: pkgValues[e.target.value] || 425})}>
+                  <option>Silver</option>
+                  <option>Gold</option>
+                  <option>Platinum</option>
+                </select>
+              </div>
+            </div>
+            <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Monthly Value (AED)</label>
                 <input className="form-input" type="number" value={form.monthly_value} onChange={e => setForm({...form, monthly_value: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Sales Person</label>
+                <select className="form-input" value={form.sales_person_id} onChange={e => setForm({...form, sales_person_id: e.target.value})}>
+                  <option value="">Select sales person</option>
+                  {salesUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Start Date</label>
-                <input className="form-input" type="date" value={form.start_date} onChange={e => setForm({...form, start_date: e.target.value})} />
+                <input className="form-input" type="date" value={form.start_date} onChange={e => {
+                  const start = new Date(e.target.value);
+                  const end = new Date(start);
+                  end.setFullYear(end.getFullYear() + 1);
+                  setForm({...form, start_date: e.target.value, end_date: end.toISOString().split('T')[0]});
+                }} />
               </div>
               <div className="form-group">
-                <label className="form-label">End Date</label>
+                <label className="form-label">End Date (auto-set)</label>
                 <input className="form-input" type="date" value={form.end_date} onChange={e => setForm({...form, end_date: e.target.value})} />
               </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Commission Amount (AED)</label>
+              <input className="form-input" type="number" value={form.commission_amount} onChange={e => setForm({...form, commission_amount: e.target.value})} placeholder="e.g. 500" />
             </div>
             <div className="form-group">
               <label className="form-label">Notes</label>
@@ -435,11 +522,8 @@ export function Villas() {
   const emptyForm = { villa_number: '', block: 'A', client_id: '', bedrooms: '', notes: '' };
   const [form, setForm] = useState(emptyForm);
 
- const load = () => apiFetch('/villas').then(r => { setVillas(r); setLoading(false); }).catch(console.error);
-  useEffect(() => {
-    load();
-    apiFetch('/clients').then(setClients).catch(console.error);
-  }, []);
+  const load = () => apiFetch('/villas').then(r => { setVillas(r); setLoading(false); }).catch(console.error);
+  useEffect(() => { load(); apiFetch('/clients').then(setClients).catch(console.error); }, []);
 
   const openNew = () => { setEditItem(null); setForm(emptyForm); setModal(true); };
   const openEdit = (v) => { setEditItem(v); setForm({ villa_number: v.villa_number, block: v.block, client_id: v.client_id || '', bedrooms: v.bedrooms || '', notes: v.notes || '' }); setModal(true); };

@@ -1,9 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import './index.css';if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(console.error);
-}
+import './index.css';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -20,6 +18,9 @@ import ServiceVisits from './pages/ServiceVisits';
 import Expenses from './pages/Expenses';
 import ClientTicket from './pages/ClientTicket';
 import ClientBooking from './pages/ClientBooking';
+import ServiceReports from './pages/ServiceReports';
+import Users from './pages/Users';
+import Commissions from './pages/Commissions';
 
 function PrivateRoute({ children }) {
   return localStorage.getItem('amc_token') ? children : <Navigate to="/login" />;
@@ -37,12 +38,15 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="villas" element={<Villas />} />
         <Route path="clients" element={<Clients />} />
         <Route path="packages" element={<Packages />} />
+        <Route path="service-reports" element={<ServiceReports />} />
         <Route path="visits" element={<ServiceVisits />} />
         <Route path="tickets" element={<Tickets />} />
         <Route path="schedule" element={<Schedule />} />
         <Route path="procurement" element={<Procurement />} />
         <Route path="expenses" element={<Expenses />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="users" element={<Users />} />
+        <Route path="commissions" element={<Commissions />} />
         <Route path="recycle" element={<RecycleBin />} />
       </Route>
     </Routes>
