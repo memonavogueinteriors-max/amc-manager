@@ -349,7 +349,6 @@ export function Contracts() {
       <div className="topbar">
         <div className="topbar-title">Contracts</div>
         <div className="topbar-right">
-          <button className="btn btn-primary" onClick={openNew}>+ New Contract</button>
         </div>
       </div>
       <div className="content">
@@ -363,7 +362,7 @@ export function Contracts() {
         <div className="card">
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Contract #</th><th>File #</th><th>Villa</th><th>Client</th><th>Property</th><th>Package</th><th>Monthly</th><th>Start</th><th>End</th><th>Next Service</th><th>Status</th><th>Actions</th></tr></thead>
+             <thead><tr><th>Contract #</th><th>File #</th><th>Villa</th><th>Client</th><th>Property</th><th>Package</th><th>Annual</th><th>Start</th><th>End</th><th>Next Service</th><th>Progress</th><th>Status</th><th>Actions</th></tr></thead>Start</th><th>End</th><th>Next Service</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody>
                 {loading ? <tr><td colSpan={12} className="loading">Loading...</td></tr> :
                   contracts.length === 0 ? <tr><td colSpan={12} className="empty">No contracts found</td></tr> :
@@ -381,7 +380,8 @@ export function Contracts() {
                           padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500
                         }}>{c.package}</span>
                       </td>
-                      <td>AED {c.monthly_value?.toLocaleString()}</td>
+                      <td style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
                       <td>{c.start_date}</td>
                       <td>{c.end_date}</td>
                       <td style={{ fontSize: 12, color: '#BA7517' }}>{c.next_service_date || '—'}</td>
@@ -407,6 +407,25 @@ export function Contracts() {
                           <option value="expiring">Expiring</option>
                           <option value="pending">Pending</option>
                         </select>
+<td>
+                        {(() => {
+                          const start = new Date(c.start_date);
+                          const end = new Date(c.end_date);
+                          const now = new Date();
+                          const total = end - start;
+                          const elapsed = now - start;
+                          const pct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+                          const color = pct < 30 ? '#3B6D11' : pct < 70 ? '#BA7517' : pct < 90 ? '#E07B2A' : '#A32D2D';
+                          return (
+                            <div style={{ minWidth: 80 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color, marginBottom: 3 }}>{pct}%</div>
+                              <div style={{ height: 6, background: 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 10, transition: 'width 0.3s' }}></div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </td>
                       </td>
                       <td style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
@@ -647,10 +666,17 @@ export function Clients() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
-  const emptyForm = { name: '', phone: '', email: '', address: '', notes: '' };
+  const emptyForm = { name: '', phone: '', email: '', address: '', notes: '', villa_id: '', package: '', start_date: '', property_type: 'Villa', sales_person_id: '', commission_amount: 0 };
   const [form, setForm] = useState(emptyForm);
 
+  const [villas, setVillas] = useState([]);
+  const [salesUsers, setSalesUsers] = useState([]);
   const load = () => apiFetch('/clients').then(r => { setClients(r); setLoading(false); }).catch(console.error);
+  useEffect(() => {
+    load();
+    apiFetch('/villas').then(setVillas).catch(console.error);
+    fetch(`${API}/users`, { headers: authHeaders() }).then(r => r.json()).then(u => setSalesUsers(u.filter(x => x.role === 'sales' || x.role === 'manager'))).catch(console.error);
+  }, []);
   useEffect(() => { load(); }, []);
 
   const openNew = () => { setEditItem(null); setForm(emptyForm); setModal(true); };
@@ -715,12 +741,15 @@ export function Clients() {
         </div>
       </div>
 
-      {modal && (
+{modal && (
         <div className="modal-bg" onClick={e => e.target === e.currentTarget && setModal(false)}>
-          <div className="modal">
+          <div className="modal" style={{ width: 560 }}>
             <div className="modal-header">
-              <div className="modal-title">{editItem ? 'Edit Client' : 'Add Client'}</div>
+              <div className="modal-title">{editItem ? 'Edit Client' : 'Add Client & Generate Contract'}</div>
               <button className="btn btn-sm" onClick={() => setModal(false)}>✕</button>
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, padding: '8px 12px', background: 'var(--bg)', borderRadius: 8 }}>
+              📋 Filling villa and package will auto-generate a contract
             </div>
             <div className="form-group">
               <label className="form-label">Full Name</label>
@@ -740,17 +769,80 @@ export function Clients() {
               <label className="form-label">Address</label>
               <input className="form-input" value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
             </div>
+            {!editItem && (
+              <>
+                <div style={{ borderTop: '0.5px solid var(--border)', margin: '12px 0', paddingTop: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 10 }}>CONTRACT DETAILS (Optional)</div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Villa</label>
+                    <select className="form-input" value={form.villa_id} onChange={e => setForm({...form, villa_id: e.target.value})}>
+                      <option value="">Select villa</option>
+                      {villas.map(v => <option key={v.id} value={v.id}>{v.villa_number}, Block {v.block}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Property Type</label>
+                    <select className="form-input" value={form.property_type} onChange={e => setForm({...form, property_type: e.target.value})}>
+                      <option>Villa</option>
+                      <option>Apartment</option>
+                      <option>Townhouse</option>
+                      <option>Estate</option>
+                      <option>Penthouse</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Package</label>
+                    <select className="form-input" value={form.package} onChange={e => setForm({...form, package: e.target.value})}>
+                      <option value="">Select package</option>
+                      <optgroup label="3 AC Units">
+                        <option value="Silver - 3 AC">Silver - 3 AC (AED 5,100/yr)</option>
+                        <option value="Gold - 3 AC">Gold - 3 AC (AED 6,550/yr)</option>
+                        <option value="Platinum - 3 AC">Platinum - 3 AC (AED 8,550/yr)</option>
+                      </optgroup>
+                      <optgroup label="4 AC Units">
+                        <option value="Silver - 4 AC">Silver - 4 AC (AED 5,750/yr)</option>
+                        <option value="Gold - 4 AC">Gold - 4 AC (AED 7,400/yr)</option>
+                        <option value="Platinum - 4 AC">Platinum - 4 AC (AED 9,750/yr)</option>
+                      </optgroup>
+                      <optgroup label="6 AC Units">
+                        <option value="Silver - 6 AC">Silver - 6 AC (AED 7,050/yr)</option>
+                        <option value="Gold - 6 AC">Gold - 6 AC (AED 9,100/yr)</option>
+                        <option value="Platinum - 6 AC">Platinum - 6 AC (AED 12,200/yr)</option>
+                      </optgroup>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Contract Start Date</label>
+                    <input className="form-input" type="date" value={form.start_date} onChange={e => setForm({...form, start_date: e.target.value})} />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Sales Person</label>
+                    <select className="form-input" value={form.sales_person_id} onChange={e => setForm({...form, sales_person_id: e.target.value})}>
+                      <option value="">Select sales person</option>
+                      {salesUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Commission Amount (AED)</label>
+                    <input className="form-input" type="number" value={form.commission_amount} onChange={e => setForm({...form, commission_amount: e.target.value})} placeholder="e.g. 500" />
+                  </div>
+                </div>
+              </>
+            )}
             <div className="form-group">
               <label className="form-label">Notes</label>
               <textarea className="form-input" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} />
             </div>
             <div className="modal-footer">
               <button className="btn" onClick={() => setModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={save}>{editItem ? 'Update' : 'Save Client'}</button>
+              <button className="btn btn-primary" onClick={save}>{editItem ? 'Update Client' : 'Save Client & Generate Contract'}</button>
             </div>
           </div>
         </div>
       )}
-    </div>
-  );
-}

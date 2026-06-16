@@ -17,9 +17,82 @@ clientsRouter.get('/', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-clientsRouter.post('/', auth, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
-    const { name, phone, email, address, notes } = req.body;
+    const { name, phone, email, address, notes, villa_id, package: pkg, start_date, property_type, sales_person_id, commission_amount } = req.body;
+    
+    const result = await getDb().query(
+      'INSERT INTO clients (name, phone, email, address, notes) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+      [name, phone||'', email||'', address||'', notes||'']
+    );
+    const client_id = result.rows[0].id;
+
+    if (villa_id && pkg && start_date) {
+      const pkgPrices = {
+        'Silver - 3 AC': 425, 'Gold - 3 AC': 546, 'Platinum - 3 AC': 712,
+        'Silver - 4 AC': 479, 'Gold - 4 AC': 617, 'Platinum - 4 AC': 812,
+        'Silver - 6 AC': 588, 'Gold - 6 AC': 758, 'Platinum - 6 AC': 1017
+      };
+      const pkgAnnual = {
+        'Silver - 3 AC': 5100, 'Gold - 3 AC': 6550, 'Platinum - 3 AC': 8550,
+        'Silver - 4 AC': 5750, 'Gold - 4 AC': 7400, 'Platinum - 4 AC': 9750,
+        'Silver - 6 AC': 7050, 'Gold - 6 AC': 9100, 'Platinum - 6 AC': 12200
+      };
+      const pkgCallouts = {
+        'Silver - 3 AC': 1, 'Gold - 3 AC': 2, 'Platinum - 3 AC': 3,
+        'Silver - 4 AC': 1, 'Gold - 4 AC': 2, 'Platinum - 4 AC': 3,
+        'Silver - 6 AC': 1, 'Gold - 6 AC': 2, 'Platinum - 6 AC': 3
+      };
+
+      const monthly_value = pkgPrices[pkg] || 425;
+      const annual_value = pkgAnnual[pkg] || 5100;
+
+      const year = new Date().getFullYear();
+      const count = await getDb().query("SELECT COUNT(*) as c FROM contracts");
+      const num = String(parseInt(count.rows[0].c) + 1).padStart(3, '0');
+      const contract_number = `VAC-${year}-${num}`;
+      const file_number = `FILE-${String(parseInt(count.rows[0].c) + 1).padStart(4, '0')}`;
+
+      const startDate = new Date(start_date);
+      const endDate = new Date(startDate);
+      endDate.setFullYear(endDate.getFullYear() + 1);
+      const end_date = endDate.toISOString().split('T')[0];
+
+      const nextService = new Date(startDate);
+      nextService.setMonth(nextService.getMonth() + 4);
+      const next_service_date = nextService.toISOString().split('T')[0];
+
+      const tier = pkg.split(' - ')[0];
+
+      await getDb().query(
+        `INSERT INTO contracts (
+          contract_number, file_number, villa_id, client_id, package,
+          monthly_value, annual_value, start_date, end_date, property_type,
+          sales_person_id, commission_amount, visits_total,
+          emergency_callouts_total, next_service_date, status
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+        [
+          contract_number, file_number, parseInt(villa_id), client_id,
+          pkg, monthly_value, annual_value, start_date, end_date,
+          property_type || 'Villa',
+          sales_person_id ? parseInt(sales_person_id) : null,
+          parseFloat(commission_amount || 0),
+          3, pkgCallouts[pkg] || 1, next_service_date, 'active'
+        ]
+      );
+
+      if (sales_person_id && commission_amount && parseFloat(commission_amount) > 0) {
+        const newContract = await getDb().query('SELECT id FROM contracts WHERE contract_number=$1', [contract_number]);
+        await getDb().query(
+          'INSERT INTO commissions (user_id, contract_id, amount, type) VALUES ($1,$2,$3,$4)',
+          [parseInt(sales_person_id), newContract.rows[0].id, parseFloat(commission_amount), 'contract_signup']
+        );
+      }
+    }
+
+    res.json({ id: client_id });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
     const result = await getDb().query(
       'INSERT INTO clients (name,phone,email,address,notes) VALUES ($1,$2,$3,$4,$5) RETURNING id',
       [name, phone, email, address, notes]
