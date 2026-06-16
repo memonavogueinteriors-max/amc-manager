@@ -2,6 +2,7 @@ const express = require('express');
 const { getDb } = require('../db/database');
 const { auth } = require('../middleware/auth');
 
+// ── CLIENTS ───────────────────────────────────────────────
 const clientsRouter = express.Router();
 
 clientsRouter.get('/', auth, async (req, res) => {
@@ -17,10 +18,10 @@ clientsRouter.get('/', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/', auth, async (req, res) => {
+clientsRouter.post('/', auth, async (req, res) => {
   try {
     const { name, phone, email, address, notes, villa_id, package: pkg, start_date, property_type, sales_person_id, commission_amount } = req.body;
-    
+
     const result = await getDb().query(
       'INSERT INTO clients (name, phone, email, address, notes) VALUES ($1,$2,$3,$4,$5) RETURNING id',
       [name, phone||'', email||'', address||'', notes||'']
@@ -62,8 +63,6 @@ router.post('/', auth, async (req, res) => {
       nextService.setMonth(nextService.getMonth() + 4);
       const next_service_date = nextService.toISOString().split('T')[0];
 
-      const tier = pkg.split(' - ')[0];
-
       await getDb().query(
         `INSERT INTO contracts (
           contract_number, file_number, villa_id, client_id, package,
@@ -83,21 +82,16 @@ router.post('/', auth, async (req, res) => {
 
       if (sales_person_id && commission_amount && parseFloat(commission_amount) > 0) {
         const newContract = await getDb().query('SELECT id FROM contracts WHERE contract_number=$1', [contract_number]);
-        await getDb().query(
-          'INSERT INTO commissions (user_id, contract_id, amount, type) VALUES ($1,$2,$3,$4)',
-          [parseInt(sales_person_id), newContract.rows[0].id, parseFloat(commission_amount), 'contract_signup']
-        );
+        if (newContract.rows[0]) {
+          await getDb().query(
+            'INSERT INTO commissions (user_id, contract_id, amount, type) VALUES ($1,$2,$3,$4)',
+            [parseInt(sales_person_id), newContract.rows[0].id, parseFloat(commission_amount), 'contract_signup']
+          );
+        }
       }
     }
 
     res.json({ id: client_id });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
-    const result = await getDb().query(
-      'INSERT INTO clients (name,phone,email,address,notes) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-      [name, phone, email, address, notes]
-    );
-    res.json({ id: result.rows[0].id });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -131,6 +125,7 @@ clientsRouter.put('/recycle/:id', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── VILLAS ────────────────────────────────────────────────
 const villasRouter = express.Router();
 
 villasRouter.get('/', auth, async (req, res) => {
@@ -190,6 +185,7 @@ villasRouter.put('/recycle/:id', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── TICKETS ───────────────────────────────────────────────
 const ticketsRouter = express.Router();
 
 ticketsRouter.get('/', auth, async (req, res) => {
@@ -263,6 +259,7 @@ ticketsRouter.put('/recycle/:id', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── SCHEDULE ──────────────────────────────────────────────
 const scheduleRouter = express.Router();
 
 scheduleRouter.get('/', auth, async (req, res) => {
@@ -296,6 +293,7 @@ scheduleRouter.put('/:id', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── PROCUREMENT ───────────────────────────────────────────
 const procurementRouter = express.Router();
 
 procurementRouter.get('/orders', auth, async (req, res) => {
@@ -307,13 +305,13 @@ procurementRouter.get('/orders', auth, async (req, res) => {
 
 procurementRouter.post('/orders', auth, async (req, res) => {
   try {
-    const { item_name, quantity, unit, unit_cost, supplier, expected_date, notes } = req.body;
+    const { item_name, quantity, unit, unit_cost, supplier, expected_date, notes, serial_number, description, ordered_by, invoice_url, invoice_name } = req.body;
     const count = await getDb().query('SELECT COUNT(*) as c FROM procurement_orders');
     const order_number = `PO-${parseInt(count.rows[0].c) + 221}`;
-    const total_cost = (unit_cost || 0) * quantity;
+    const total_cost = (parseFloat(unit_cost) || 0) * (parseFloat(quantity) || 0);
     const result = await getDb().query(
-      'INSERT INTO procurement_orders (order_number,item_name,quantity,unit,unit_cost,total_cost,supplier,expected_date,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id',
-      [order_number, item_name, quantity, unit, unit_cost, total_cost, supplier, expected_date, notes]
+      'INSERT INTO procurement_orders (order_number,item_name,quantity,unit,unit_cost,total_cost,supplier,expected_date,notes,serial_number,description,ordered_by,invoice_url,invoice_name) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id',
+      [order_number, item_name, quantity, unit||'unit', unit_cost, total_cost, supplier, expected_date, notes, serial_number, description, ordered_by, invoice_url, invoice_name]
     );
     res.json({ id: result.rows[0].id, order_number });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -344,6 +342,7 @@ procurementRouter.put('/inventory/:id', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── DASHBOARD ─────────────────────────────────────────────
 const dashboardRouter = express.Router();
 
 dashboardRouter.get('/', auth, async (req, res) => {
@@ -377,17 +376,22 @@ dashboardRouter.get('/', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── CONTRACTS ─────────────────────────────────────────────
 const contractsRouter = express.Router();
 
 contractsRouter.get('/', auth, async (req, res) => {
   try {
     const { status } = req.query;
-    let sql = `SELECT c.*, v.villa_number, v.block, cl.name as client_name, u.name as rm_name
-               FROM contracts c
-               LEFT JOIN villas v ON c.villa_id = v.id
-               LEFT JOIN clients cl ON c.client_id = cl.id
-               LEFT JOIN users u ON c.relationship_manager_id = u.id
-               WHERE c.deleted=false`;
+    let sql = `
+      SELECT c.*, v.villa_number, v.block, cl.name as client_name,
+             u.name as rm_name, sp.name as sales_person_name
+      FROM contracts c
+      LEFT JOIN villas v ON c.villa_id = v.id
+      LEFT JOIN clients cl ON c.client_id = cl.id
+      LEFT JOIN users u ON c.relationship_manager_id = u.id
+      LEFT JOIN users sp ON c.sales_person_id = sp.id
+      WHERE c.deleted=false
+    `;
     const params = [];
     if (status) { sql += ` AND c.status = $1`; params.push(status); }
     sql += ' ORDER BY c.created_at DESC';
@@ -396,24 +400,97 @@ contractsRouter.get('/', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+contractsRouter.get('/stats', auth, async (req, res) => {
+  try {
+    const db = getDb();
+    const total = await db.query("SELECT COUNT(*) as c FROM contracts WHERE deleted=false");
+    const active = await db.query("SELECT COUNT(*) as c FROM contracts WHERE status='active' AND deleted=false");
+    const revenue = await db.query("SELECT SUM(monthly_value) as total FROM contracts WHERE status IN ('active','expiring') AND deleted=false");
+    res.json({
+      total: parseInt(total.rows[0].c),
+      active: parseInt(active.rows[0].c),
+      monthly_revenue: parseFloat(revenue.rows[0].total) || 0
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 contractsRouter.post('/', auth, async (req, res) => {
   try {
-    const { villa_id, client_id, package: pkg, monthly_value, start_date, end_date, relationship_manager_id, notes } = req.body;
-    const count = await getDb().query('SELECT COUNT(*) as c FROM contracts');
-    const contract_number = `AMC-${String(parseInt(count.rows[0].c) + 1).padStart(3,'0')}`;
+    const {
+      villa_id, client_id, package: pkg, monthly_value,
+      start_date, end_date, property_type, relationship_manager_id,
+      sales_person_id, commission_amount, notes
+    } = req.body;
+
+    if (!villa_id || !client_id || !pkg || !monthly_value || !start_date || !end_date)
+      return res.status(400).json({ error: 'All fields required' });
+
+    const year = new Date().getFullYear();
+    const count = await getDb().query("SELECT COUNT(*) as c FROM contracts");
+    const num = String(parseInt(count.rows[0].c) + 1).padStart(3, '0');
+    const contract_number = `VAC-${year}-${num}`;
+    const file_number = `FILE-${String(parseInt(count.rows[0].c) + 1).padStart(4, '0')}`;
+
+    const pkgCallouts = { Silver: 1, Gold: 2, Platinum: 3 };
+    const startDate = new Date(start_date);
+    const nextService = new Date(startDate);
+    nextService.setMonth(nextService.getMonth() + 4);
+    const next_service_date = nextService.toISOString().split('T')[0];
+
     const result = await getDb().query(
-      'INSERT INTO contracts (contract_number,villa_id,client_id,package,monthly_value,start_date,end_date,relationship_manager_id,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id',
-      [contract_number, parseInt(villa_id), parseInt(client_id), pkg, parseFloat(monthly_value), start_date, end_date, relationship_manager_id ? parseInt(relationship_manager_id) : null, notes||'']
+      `INSERT INTO contracts (
+        contract_number, file_number, villa_id, client_id, package,
+        monthly_value, start_date, end_date, property_type,
+        relationship_manager_id, sales_person_id, commission_amount,
+        visits_total, emergency_callouts_total, next_service_date, notes
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING id`,
+      [
+        contract_number, file_number, parseInt(villa_id), parseInt(client_id),
+        pkg, parseFloat(monthly_value), start_date, end_date,
+        property_type || 'Villa',
+        relationship_manager_id ? parseInt(relationship_manager_id) : null,
+        sales_person_id ? parseInt(sales_person_id) : null,
+        parseFloat(commission_amount || 0),
+        3, pkgCallouts[pkg.split(' ')[0]] || 1,
+        next_service_date, notes || ''
+      ]
     );
-    res.json({ id: result.rows[0].id, contract_number });
+
+    if (sales_person_id && commission_amount && parseFloat(commission_amount) > 0) {
+      await getDb().query(
+        'INSERT INTO commissions (user_id, contract_id, amount, type) VALUES ($1,$2,$3,$4)',
+        [parseInt(sales_person_id), result.rows[0].id, parseFloat(commission_amount), 'contract_signup']
+      );
+    }
+
+    res.json({ id: result.rows[0].id, contract_number, file_number });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 contractsRouter.put('/:id', auth, async (req, res) => {
   try {
-    const { package: pkg, monthly_value, start_date, end_date, status, relationship_manager_id, notes } = req.body;
-    await getDb().query('UPDATE contracts SET package=$1,monthly_value=$2,start_date=$3,end_date=$4,status=$5,relationship_manager_id=$6,notes=$7 WHERE id=$8',
-      [pkg, parseFloat(monthly_value), start_date, end_date, status, relationship_manager_id ? parseInt(relationship_manager_id) : null, notes, req.params.id]);
+    const {
+      package: pkg, monthly_value, start_date, end_date, status,
+      relationship_manager_id, sales_person_id, property_type,
+      commission_amount, next_service_date, notes
+    } = req.body;
+    await getDb().query(
+      `UPDATE contracts SET
+        package=$1, monthly_value=$2, start_date=$3, end_date=$4,
+        status=$5, relationship_manager_id=$6, notes=$7,
+        property_type=$8, sales_person_id=$9, commission_amount=$10,
+        next_service_date=$11
+      WHERE id=$12`,
+      [
+        pkg, parseFloat(monthly_value), start_date, end_date, status,
+        relationship_manager_id ? parseInt(relationship_manager_id) : null,
+        notes || '', property_type || 'Villa',
+        sales_person_id ? parseInt(sales_person_id) : null,
+        parseFloat(commission_amount || 0),
+        next_service_date || null,
+        req.params.id
+      ]
+    );
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -427,7 +504,13 @@ contractsRouter.delete('/:id', auth, async (req, res) => {
 
 contractsRouter.get('/recycle', auth, async (req, res) => {
   try {
-    const result = await getDb().query('SELECT * FROM contracts WHERE deleted=true ORDER BY created_at DESC');
+    const result = await getDb().query(`
+      SELECT c.*, v.villa_number, v.block, cl.name as client_name
+      FROM contracts c
+      LEFT JOIN villas v ON c.villa_id = v.id
+      LEFT JOIN clients cl ON c.client_id = cl.id
+      WHERE c.deleted=true ORDER BY c.created_at DESC
+    `);
     res.json(result.rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
