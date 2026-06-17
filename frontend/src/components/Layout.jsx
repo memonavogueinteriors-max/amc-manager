@@ -1,5 +1,22 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 
+const navItems = [
+  { to: '/', label: 'Dashboard', icon: '⊞', section: 'Main', exact: true },
+  { to: '/contracts', label: 'Contracts', icon: '📄', section: null },
+  { to: '/villas', label: 'Villas', icon: '🏡', section: null },
+  { to: '/clients', label: 'Clients', icon: '👥', section: null },
+  { to: '/packages', label: 'Packages', icon: '📦', section: 'Services' },
+  { to: '/service-reports', label: 'Service Reports', icon: '📋', section: null },
+  { to: '/visits', label: 'Service Visits', icon: '🔧', section: null },
+  { to: '/schedule', label: 'Schedule', icon: '📅', section: null },
+  { to: '/tickets', label: 'Service Tickets', icon: '🎫', section: null },
+  { to: '/procurement', label: 'Procurement', icon: '🚚', section: 'Operations' },
+  { to: '/expenses', label: 'Expenses', icon: '💰', section: null },
+  { to: '/reports', label: 'Reports', icon: '📊', section: 'Management' },
+  { to: '/users', label: 'User Management', icon: '👤', section: null },
+  { to: '/commissions', label: 'Commissions', icon: '💵', section: null },
+  { to: '/recycle', label: 'Recycle Bin', icon: '🗑️', section: null },
+];
 
 export default function Layout() {
   const navigate = useNavigate();
