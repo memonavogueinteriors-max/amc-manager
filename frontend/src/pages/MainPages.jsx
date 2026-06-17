@@ -674,7 +674,27 @@ export function Clients() {
     ))
   )}
 </tbody>
-           
+                {loading ? <tr><td colSpan={6} className="loading">Loading...</td></tr> :
+                  clients.map(c => (
+                    <tr key={c.id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div className="avatar">{initials(c.name)}</div>
+                          <span style={{ fontWeight: 500 }}>{c.name}</span>
+                        </div>
+                      </td>
+                      <td>{c.phone || '—'}</td>
+                      <td>{c.email || '—'}</td>
+                      <td>{c.contract_count || 0}</td>
+                      <td>{c.total_monthly ? `AED ${Math.round(c.total_monthly).toLocaleString()}` : '—'}</td>
+                      <td style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
+                      </td>
+                    </tr>
+                  ))
+                }
+              </tbody>
             </table>
           </div>
         </div>
