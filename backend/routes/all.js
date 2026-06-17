@@ -8,12 +8,23 @@ const clientsRouter = express.Router();
 clientsRouter.get('/', auth, async (req, res) => {
   try {
     const result = await getDb().query(`
-      SELECT cl.*, COUNT(c.id) as contract_count, SUM(c.monthly_value) as total_monthly
-      FROM clients cl
-      LEFT JOIN contracts c ON cl.id = c.client_id AND c.status IN ('active','expiring')
-      WHERE cl.deleted=false
-      GROUP BY cl.id ORDER BY cl.name
-    `);
+  SELECT
+    cl.*,
+    v.villa_number,
+    v.block,
+    c.package,
+    c.property_type,
+    c.monthly_value,
+    c.end_date,
+    c.status as contract_status,
+    COUNT(c.id) OVER(PARTITION BY cl.id) as contract_count,
+    SUM(c.monthly_value) OVER(PARTITION BY cl.id) as total_monthly
+  FROM clients cl
+  LEFT JOIN contracts c ON cl.id = c.client_id AND c.deleted=false
+  LEFT JOIN villas v ON v.id = c.villa_id
+  WHERE cl.deleted=false
+  ORDER BY cl.name
+`);
     res.json(result.rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
