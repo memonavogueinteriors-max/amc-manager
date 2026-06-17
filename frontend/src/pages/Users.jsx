@@ -33,7 +33,7 @@ export default function Users() {
   const roleColor = { owner: '#185FA5', manager: '#BA7517', sales: '#3B6D11' };
   const roleBg = { owner: '#E6F1FB', manager: '#FAEEDA', sales: '#EAF3DE' };
 
-  if (currentUser.role !== 'owner') {
+  if (user.role !== 'owner' && user.role !== 'admin') { {
     return (
       <div>
         <div className="topbar"><div className="topbar-title">User Management</div></div>
