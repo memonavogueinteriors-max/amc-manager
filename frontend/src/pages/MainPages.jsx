@@ -616,64 +616,8 @@ export function Clients() {
         <div className="card">
           <div className="table-wrap">
             <table>
-             <thead>
-  <tr>
-    <th>Client</th>
-    <th>Phone</th>
-    <th>Email</th>
-    <th>Property Type</th>
-    <th>Property</th>
-    <th>Block</th>
-    <th>Package</th>
-    <th>Monthly</th>
-    <th>Contract End</th>
-    <th>Status</th>
-    <th>Actions</th>
-  </tr>
-</thead>
-<tbody>
-  {loading ? (
-    <tr>
-      <td colSpan={11} className="loading">Loading...</td>
-    </tr>
-  ) : clients.length === 0 ? (
-    <tr>
-      <td colSpan={11} className="empty">No clients found</td>
-    </tr>
-  ) : (
-    clients.map(c => (
-      <tr key={`${c.id}-${c.villa_number || 'no-property'}-${c.package || 'no-package'}`}>
-        <td>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="avatar">{initials(c.name)}</div>
-            <span style={{ fontWeight: 500 }}>{c.name}</span>
-          </div>
-        </td>
-        <td>{c.phone || '—'}</td>
-        <td>{c.email || '—'}</td>
-        <td>{c.property_type || '—'}</td>
-        <td>{c.villa_number || '—'}</td>
-        <td>{c.block || '—'}</td>
-        <td>{c.package || '—'}</td>
-        <td>{c.monthly_value ? `AED ${Math.round(c.monthly_value).toLocaleString()}` : '—'}</td>
-        <td>{c.end_date || '—'}</td>
-        <td>
-          {c.contract_status ? (
-            <span className={`pill pill-${c.contract_status}`}>
-              {c.contract_status}
-            </span>
-          ) : (
-            <span style={{ color: 'var(--text-3)', fontSize: 12 }}>No contract</span>
-          )}
-        </td>
-        <td style={{ display: 'flex', gap: 6 }}>
-          <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
-          <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
-        </td>
-      </tr>
-    ))
-  )}
-</tbody>
+              <thead><tr><th>Client</th><th>Phone</th><th>Email</th><th>Contracts</th><th>Total/mo</th><th>Actions</th></tr></thead>
+              <tbody>
                 {loading ? <tr><td colSpan={6} className="loading">Loading...</td></tr> :
                   clients.map(c => (
                     <tr key={c.id}>
@@ -709,7 +653,7 @@ export function Clients() {
             </div>
             {!editItem && (
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, padding: '8px 12px', background: 'var(--bg)', borderRadius: 8 }}>
-                📋 Fill property and package below to auto-generate an AMC contract
+                📋 Fill villa and package below to auto-generate a contract
               </div>
             )}
             <div className="form-group">
@@ -737,9 +681,9 @@ export function Clients() {
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Property</label>
+                    <label className="form-label">Villa</label>
                     <select className="form-input" value={form.villa_id} onChange={e => setForm({...form, villa_id: e.target.value})}>
-                      <option value="">Select property</option>
+                      <option value="">Select villa</option>
                       {villas.map(v => <option key={v.id} value={v.id}>{v.villa_number}, Block {v.block}</option>)}
                     </select>
                   </div>
