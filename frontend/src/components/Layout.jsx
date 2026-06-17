@@ -3,7 +3,6 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 const navItems = [
   { to: '/', label: 'Dashboard', icon: '⊞', section: 'Main', exact: true },
   { to: '/contracts', label: 'Contracts', icon: '📄', section: null },
-  { to: '/villas', label: 'Villas', icon: '🏡', section: null },
   { to: '/clients', label: 'Clients', icon: '👥', section: null },
   { to: '/packages', label: 'Packages', icon: '📦', section: 'Services' },
   { to: '/service-reports', label: 'Service Reports', icon: '📋', section: null },
