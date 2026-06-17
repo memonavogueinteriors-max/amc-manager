@@ -30,8 +30,18 @@ export default function Users() {
   const load = () => {
     fetch(`${API}/users`, { headers: authHeaders() })
       .then(r => r.json())
-      .then(setUsers)
-      .catch(console.error);
+      .then(data => {
+        if (Array.isArray(data)) {
+          setUsers(data);
+        } else {
+          console.error('Users API returned:', data);
+          setUsers([]);
+        }
+      })
+      .catch(err => {
+        console.error('Users load error:', err);
+        setUsers([]);
+      });
   };
 
   useEffect(() => {
@@ -145,51 +155,57 @@ export default function Users() {
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => (
-                  <tr key={u.id}>
-                    <td style={{ fontWeight: 500 }}>{u.name}</td>
-                    <td>{u.email}</td>
-                    <td>
-                      <span style={{
-                        background: roleBg[u.role] || '#F1EFE8',
-                        color: roleColor[u.role] || '#444',
-                        padding: '3px 10px',
-                        borderRadius: 20,
-                        fontSize: 11,
-                        fontWeight: 500
-                      }}>
-                        {u.role?.toUpperCase()}
-                      </span>
-                    </td>
-                    <td>{u.phone || '—'}</td>
-                    <td>{u.sales_target ? `AED ${parseFloat(u.sales_target).toLocaleString()}` : '—'}</td>
-                    <td>
-                      <span className={`pill pill-${u.active ? 'active' : 'expired'}`}>
-                        {u.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        className="btn btn-sm"
-                        onClick={() => {
-                          setEditItem(u);
-                          setForm({
-                            name: u.name,
-                            email: u.email,
-                            password: '',
-                            role: u.role,
-                            phone: u.phone || '',
-                            sales_target: u.sales_target || 0,
-                            active: u.active
-                          });
-                          setModal(true);
-                        }}
-                      >
-                        Edit
-                      </button>
-                    </td>
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="empty">No users found</td>
                   </tr>
-                ))}
+                ) : (
+                  users.map(u => (
+                    <tr key={u.id}>
+                      <td style={{ fontWeight: 500 }}>{u.name}</td>
+                      <td>{u.email}</td>
+                      <td>
+                        <span style={{
+                          background: roleBg[u.role] || '#F1EFE8',
+                          color: roleColor[u.role] || '#444',
+                          padding: '3px 10px',
+                          borderRadius: 20,
+                          fontSize: 11,
+                          fontWeight: 500
+                        }}>
+                          {u.role?.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>{u.phone || '—'}</td>
+                      <td>{u.sales_target ? `AED ${parseFloat(u.sales_target).toLocaleString()}` : '—'}</td>
+                      <td>
+                        <span className={`pill pill-${u.active ? 'active' : 'expired'}`}>
+                          {u.active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => {
+                            setEditItem(u);
+                            setForm({
+                              name: u.name,
+                              email: u.email,
+                              password: '',
+                              role: u.role,
+                              phone: u.phone || '',
+                              sales_target: u.sales_target || 0,
+                              active: u.active
+                            });
+                            setModal(true);
+                          }}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
