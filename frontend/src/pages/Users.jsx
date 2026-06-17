@@ -31,9 +31,8 @@ export default function Users() {
     fetch(`${API}/users`, { headers: authHeaders() })
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data)) {
-          setUsers(data);
-        } else {
+        if (Array.isArray(data)) setUsers(data);
+        else {
           console.error('Users API returned:', data);
           setUsers([]);
         }
@@ -50,33 +49,99 @@ export default function Users() {
 
   const save = async () => {
     try {
+      let res;
+
       if (editItem) {
-        await fetch(`${API}/users/${editItem.id}`, {
+        res = await fetch(`${API}/users/${editItem.id}`, {
           method: 'PUT',
           headers: authHeaders(),
           body: JSON.stringify(form)
         });
 
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to update user');
+        }
+
         if (form.password) {
-          await fetch(`${API}/users/${editItem.id}/password`, {
+          res = await fetch(`${API}/users/${editItem.id}/password`, {
             method: 'PUT',
             headers: authHeaders(),
             body: JSON.stringify({ password: form.password })
           });
+
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Failed to update password');
+          }
         }
       } else {
-        await fetch(`${API}/users`, {
+        res = await fetch(`${API}/users`, {
           method: 'POST',
           headers: authHeaders(),
           body: JSON.stringify(form)
         });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to add user');
+        }
       }
 
       setModal(false);
+      setEditItem(null);
+      setForm(emptyForm);
       load();
     } catch (e) {
       alert('Error: ' + e.message);
     }
+  };
+
+  const toggleStatus = async (u) => {
+    const action = u.active ? 'deactivate' : 'activate';
+
+    if (!window.confirm(`Are you sure you want to ${action} ${u.name}?`)) return;
+
+    try {
+      const res = await fetch(`${API}/users/${u.id}/status`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ active: !u.active })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Status update failed');
+
+      load();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
+
+  const deleteUser = async (u) => {
+    if (!window.confirm(`Delete ${u.name}? This cannot be undone.`)) return;
+
+    try {
+      const res = await fetch(`${API}/users/${u.id}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || 'Delete failed');
+
+      load();
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
+
+  const canManageDanger = (u) => {
+    if (String(u.id) === String(currentUser.id)) return false;
+    if (u.role === 'owner' || u.role === 'admin') return false;
+    return true;
   };
 
   const roleColor = {
@@ -130,13 +195,15 @@ export default function Users() {
             <div className="metric-label">Total Users</div>
             <div className="metric-val">{users.length}</div>
           </div>
+
+          <div className="metric-card">
+            <div className="metric-label">Active Users</div>
+            <div className="metric-val">{users.filter(u => u.active).length}</div>
+          </div>
+
           <div className="metric-card">
             <div className="metric-label">Sales Team</div>
             <div className="metric-val">{users.filter(u => u.role === 'sales').length}</div>
-          </div>
-          <div className="metric-card">
-            <div className="metric-label">Managers</div>
-            <div className="metric-val">{users.filter(u => u.role === 'manager').length}</div>
           </div>
         </div>
 
@@ -154,6 +221,7 @@ export default function Users() {
                   <th>Actions</th>
                 </tr>
               </thead>
+
               <tbody>
                 {users.length === 0 ? (
                   <tr>
@@ -165,14 +233,16 @@ export default function Users() {
                       <td style={{ fontWeight: 500 }}>{u.name}</td>
                       <td>{u.email}</td>
                       <td>
-                        <span style={{
-                          background: roleBg[u.role] || '#F1EFE8',
-                          color: roleColor[u.role] || '#444',
-                          padding: '3px 10px',
-                          borderRadius: 20,
-                          fontSize: 11,
-                          fontWeight: 500
-                        }}>
+                        <span
+                          style={{
+                            background: roleBg[u.role] || '#F1EFE8',
+                            color: roleColor[u.role] || '#444',
+                            padding: '3px 10px',
+                            borderRadius: 20,
+                            fontSize: 11,
+                            fontWeight: 500
+                          }}
+                        >
                           {u.role?.toUpperCase()}
                         </span>
                       </td>
@@ -183,7 +253,7 @@ export default function Users() {
                           {u.active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td>
+                      <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <button
                           className="btn btn-sm"
                           onClick={() => {
@@ -202,6 +272,28 @@ export default function Users() {
                         >
                           Edit
                         </button>
+
+                        {canManageDanger(u) && (
+                          <button
+                            className="btn btn-sm"
+                            style={{
+                              background: u.active ? '#FAEEDA' : '#EAF3DE',
+                              color: u.active ? '#854F0B' : '#3B6D11'
+                            }}
+                            onClick={() => toggleStatus(u)}
+                          >
+                            {u.active ? 'Deactivate' : 'Activate'}
+                          </button>
+                        )}
+
+                        {canManageDanger(u) && (
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => deleteUser(u)}
+                          >
+                            Delete
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))
