@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';import jsPDF from 'jspdf';
+import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
 
 const API = 'https://amc-manager-production.up.railway.app/api';
 
@@ -120,6 +121,7 @@ export function Dashboard() {
 }
 
 export function Contracts() {
+const navigate = useNavigate();
 const navigate = useNavigate();
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
