@@ -285,7 +285,7 @@ const navigate = useNavigate();
                     const pct = Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100)));
                     const pctColor = pct < 30 ? '#3B6D11' : pct < 70 ? '#BA7517' : pct < 90 ? '#E07B2A' : '#A32D2D';
                     return (
-                      <tr key={c.id}>
+                      <tr key={c.id} style={{ cursor: 'pointer' }} onClick={(e) => { if (!['BUTTON','SELECT','OPTION'].includes(e.target.tagName)) navigate(`/contracts/${c.id}`); }}>
                         <td style={{ fontWeight: 500 }}>{c.contract_number}</td>
                         <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{c.file_number || '—'}</td>
                         <td>{c.villa_number}, Block {c.block}</td>
@@ -325,8 +325,7 @@ const navigate = useNavigate();
                         <td style={{ display: 'flex', gap: 6 }}>
   <button
     className="btn btn-sm"
-    onClick={() => navigate(`/contracts/${c.id}`)}
-  >
+      >
     AMC Details
   </button>
 
