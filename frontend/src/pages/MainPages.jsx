@@ -323,11 +323,7 @@ const navigate = useNavigate();
                           </select>
                         </td>
                         <td style={{ display: 'flex', gap: 6 }}>
-  <button
-    className="btn btn-sm"
-      >
-    AMC Details
-  </button>
+  
 
   <button
     className="btn btn-sm"
@@ -665,7 +661,7 @@ export function Clients() {
               <tbody>
                 {loading ? <tr><td colSpan={6} className="loading">Loading...</td></tr> :
                   clients.map(c => (
-                    <tr key={c.id}>
+                    <tr key={c.id} style={{ cursor: 'pointer' }} onClick={(e) => { if (!['BUTTON','SELECT','OPTION'].includes(e.target.tagName)) navigate(`/contracts/${c.id}`); }}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div className="avatar">{initials(c.name)}</div>
