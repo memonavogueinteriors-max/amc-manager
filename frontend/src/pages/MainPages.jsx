@@ -122,7 +122,6 @@ export function Dashboard() {
 
 export function Contracts() {
 const navigate = useNavigate();
-const navigate = useNavigate();
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
