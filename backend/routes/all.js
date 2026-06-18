@@ -31,12 +31,27 @@ clientsRouter.get('/', auth, async (req, res) => {
 
 clientsRouter.post('/', auth, async (req, res) => {
   try {
-    const { name, phone, email, address, notes, villa_id, package: pkg, start_date, property_type, sales_person_id, commission_amount } = req.body;
+   const {
+  name, phone, email, address, notes,
+  property_number, block, property_type,
+  villa_id, package: pkg, start_date,
+  sales_person_id, commission_amount
+} = req.body;
 
     const result = await getDb().query(
-      'INSERT INTO clients (name, phone, email, address, notes) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-      [name, phone||'', email||'', address||'', notes||'']
-    );
+  `INSERT INTO clients (name, phone, email, address, property_number, block, property_type, notes)
+   VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+  [
+    name,
+    phone || '',
+    email || '',
+    address || '',
+    property_number || '',
+    block || '',
+    property_type || 'Villa',
+    notes || ''
+  ]
+);
     const client_id = result.rows[0].id;
 
     if (villa_id && pkg && start_date) {
@@ -108,9 +123,25 @@ clientsRouter.post('/', auth, async (req, res) => {
 
 clientsRouter.put('/:id', auth, async (req, res) => {
   try {
-    const { name, phone, email, address, notes } = req.body;
-    await getDb().query('UPDATE clients SET name=$1,phone=$2,email=$3,address=$4,notes=$5 WHERE id=$6',
-      [name, phone, email, address, notes, req.params.id]);
+    const { name, phone, email, address, property_number, block, property_type, notes } = req.body;
+
+await getDb().query(
+  `UPDATE clients
+   SET name=$1, phone=$2, email=$3, address=$4,
+       property_number=$5, block=$6, property_type=$7, notes=$8
+   WHERE id=$9`,
+  [
+    name,
+    phone || '',
+    email || '',
+    address || '',
+    property_number || '',
+    block || '',
+    property_type || 'Villa',
+    notes || '',
+    req.params.id
+  ]
+);
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

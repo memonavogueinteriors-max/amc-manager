@@ -571,7 +571,21 @@ export function Clients() {
   const [editItem, setEditItem] = useState(null);
   const [villas, setVillas] = useState([]);
   const [salesUsers, setSalesUsers] = useState([]);
-  const emptyForm = { name: '', phone: '', email: '', address: '', notes: '', villa_id: '', package: '', start_date: '', property_type: 'Villa', sales_person_id: '', commission_amount: 0 };
+  const emptyForm = {
+  name: '',
+  phone: '',
+  email: '',
+  address: '',
+  property_number: '',
+  block: '',
+  property_type: 'Villa',
+  notes: '',
+  villa_id: '',
+  package: '',
+  start_date: '',
+  sales_person_id: '',
+  commission_amount: 0
+};
   const [form, setForm] = useState(emptyForm);
 
   const load = () => apiFetch('/clients').then(r => { setClients(r); setLoading(false); }).catch(console.error);
@@ -583,12 +597,43 @@ export function Clients() {
   }, []);
 
   const openNew = () => { setEditItem(null); setForm(emptyForm); setModal(true); };
-  const openEdit = (c) => { setEditItem(c); setForm({ name: c.name, phone: c.phone || '', email: c.email || '', address: c.address || '', notes: c.notes || '', villa_id: '', package: '', start_date: '', property_type: 'Villa', sales_person_id: '', commission_amount: 0 }); setModal(true); };
+  const openEdit = (c) => {
+  setEditItem(c);
+  setForm({
+    name: c.name,
+    phone: c.phone || '',
+    email: c.email || '',
+    address: c.address || '',
+    property_number: c.property_number || '',
+    block: c.block || '',
+    property_type: c.property_type || 'Villa',
+    notes: c.notes || '',
+    villa_id: '',
+    package: '',
+    start_date: '',
+    sales_person_id: '',
+    commission_amount: 0
+  });
+  setModal(true);
+};
 
   const save = async () => {
     try {
       if (editItem) {
-        await fetch(`${API}/clients/${editItem.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ name: form.name, phone: form.phone, email: form.email, address: form.address, notes: form.notes }) });
+        await fetch(`${API}/clients/${editItem.id}`, {
+  method: 'PUT',
+  headers: authHeaders(),
+  body: JSON.stringify({
+    name: form.name,
+    phone: form.phone,
+    email: form.email,
+    address: form.address,
+    property_number: form.property_number,
+    block: form.block,
+    property_type: form.property_type,
+    notes: form.notes
+  })
+});
       } else {
         await fetch(`${API}/clients`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(form) });
       }
@@ -652,14 +697,58 @@ export function Clients() {
               <button className="btn btn-sm" onClick={() => setModal(false)}>✕</button>
             </div>
             {!editItem && (
-              <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, padding: '8px 12px', background: 'var(--bg)', borderRadius: 8 }}>
-                📋 Fill villa and package below to auto-generate a contract
-              </div>
-            )}
-            <div className="form-group">
-              <label className="form-label">Full Name</label>
-              <input className="form-input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
-            </div>
+  <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, padding: '8px 12px', background: 'var(--bg)', borderRadius: 8 }}>
+    📋 Fill property details and package below to auto-generate an AMC contract
+  </div>
+)}
+
+<div className="form-group">
+  <label className="form-label">Full Name</label>
+  <input
+    className="form-input"
+    value={form.name}
+    onChange={e => setForm({...form, name: e.target.value})}
+  />
+</div>
+           
+            <div className="form-row">
+  <div className="form-group">
+    <label className="form-label">Property Number</label>
+    <input
+      className="form-input"
+      placeholder="e.g. Villa 41"
+      value={form.property_number || ''}
+      onChange={e => setForm({...form, property_number: e.target.value})}
+    />
+  </div>
+
+  <div className="form-group">
+    <label className="form-label">Block</label>
+    <input
+      className="form-input"
+      placeholder="e.g. A"
+      value={form.block || ''}
+      onChange={e => setForm({...form, block: e.target.value})}
+    />
+  </div>
+</div>
+
+<div className="form-group">
+  <label className="form-label">Property Type</label>
+  <select
+    className="form-input"
+    value={form.property_type}
+    onChange={e => setForm({...form, property_type: e.target.value})}
+  >
+    <option>Villa</option>
+    <option>Apartment</option>
+    <option>Townhouse</option>
+    <option>Estate</option>
+    <option>Penthouse</option>
+    <option>Office</option>
+    <option>Shop</option>
+  </select>
+</div>
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Phone</label>
@@ -678,21 +767,6 @@ export function Clients() {
               <>
                 <div style={{ borderTop: '0.5px solid var(--border)', margin: '12px 0', paddingTop: 12 }}>
                   <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', marginBottom: 10 }}>CONTRACT DETAILS (Optional)</div>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Villa</label>
-                    <select className="form-input" value={form.villa_id} onChange={e => setForm({...form, villa_id: e.target.value})}>
-                      <option value="">Select villa</option>
-                      {villas.map(v => <option key={v.id} value={v.id}>{v.villa_number}, Block {v.block}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Property Type</label>
-                    <select className="form-input" value={form.property_type} onChange={e => setForm({...form, property_type: e.target.value})}>
-                      <option>Villa</option><option>Apartment</option><option>Townhouse</option><option>Estate</option><option>Penthouse</option>
-                    </select>
-                  </div>
                 </div>
                 <div className="form-row">
                   <div className="form-group">
