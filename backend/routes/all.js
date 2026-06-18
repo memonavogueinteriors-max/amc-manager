@@ -5,7 +5,7 @@ const { auth } = require('../middleware/auth');
 // ── CLIENTS ───────────────────────────────────────────────
 const clientsRouter = express.Router();
 
-clientsRouter.get('/', auth, async (req, res) => {
+clientsRouter.get('/', auth, async (req, res) => { // ROLE_FILTER
   try {
     const result = await getDb().query(`
   SELECT
@@ -25,7 +25,7 @@ clientsRouter.get('/', auth, async (req, res) => {
   WHERE cl.deleted=false
   ORDER BY cl.name
 `);
-    res.json(result.rows);
+    let rows = result.rows;
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -156,7 +156,7 @@ clientsRouter.delete('/:id', auth, async (req, res) => {
 clientsRouter.get('/recycle', auth, async (req, res) => {
   try {
     const result = await getDb().query('SELECT * FROM clients WHERE deleted=true ORDER BY name');
-    res.json(result.rows);
+    let rows = result.rows;
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -182,7 +182,7 @@ villasRouter.get('/', auth, async (req, res) => {
       WHERE v.deleted=false
       ORDER BY v.block, v.villa_number
     `);
-    res.json(result.rows);
+    let rows = result.rows;
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -216,7 +216,7 @@ villasRouter.delete('/:id', auth, async (req, res) => {
 villasRouter.get('/recycle', auth, async (req, res) => {
   try {
     const result = await getDb().query('SELECT * FROM villas WHERE deleted=true ORDER BY villa_number');
-    res.json(result.rows);
+    let rows = result.rows;
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -243,7 +243,7 @@ ticketsRouter.get('/', auth, async (req, res) => {
     if (priority) { sql += ` AND t.priority = $${params.length+1}`; params.push(priority); }
     sql += ` ORDER BY CASE t.priority WHEN 'urgent' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, t.created_at DESC`;
     const result = await getDb().query(sql, params);
-    res.json(result.rows);
+    let rows = result.rows;
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -290,7 +290,7 @@ ticketsRouter.delete('/:id', auth, async (req, res) => {
 ticketsRouter.get('/recycle', auth, async (req, res) => {
   try {
     const result = await getDb().query('SELECT * FROM tickets WHERE deleted=true ORDER BY created_at DESC');
-    res.json(result.rows);
+    let rows = result.rows;
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -311,7 +311,7 @@ scheduleRouter.get('/', auth, async (req, res) => {
       FROM schedule s LEFT JOIN villas v ON s.villa_id = v.id
       ORDER BY s.scheduled_date ASC
     `);
-    res.json(result.rows);
+    let rows = result.rows;
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -341,7 +341,7 @@ const procurementRouter = express.Router();
 procurementRouter.get('/orders', auth, async (req, res) => {
   try {
     const result = await getDb().query('SELECT * FROM procurement_orders ORDER BY created_at DESC');
-    res.json(result.rows);
+    let rows = result.rows;
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -371,7 +371,7 @@ procurementRouter.put('/orders/:id', auth, async (req, res) => {
 procurementRouter.get('/inventory', auth, async (req, res) => {
   try {
     const result = await getDb().query('SELECT * FROM inventory ORDER BY item_name');
-    res.json(result.rows);
+    let rows = result.rows;
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -435,10 +435,17 @@ contractsRouter.get('/', auth, async (req, res) => {
       WHERE c.deleted=false
     `;
     const params = [];
-    if (status) { sql += ` AND c.status = $1`; params.push(status); }
+    if (req.user.role === 'sales') {
+      sql += ` AND c.sales_person_id = $${params.length+1}`;
+      params.push(req.user.id);
+    }
+    if (status) {
+      sql += ` AND c.status = $${params.length+1}`;
+      params.push(status);
+    }
     sql += ' ORDER BY c.created_at DESC';
     const result = await getDb().query(sql, params);
-    res.json(result.rows);
+    let rows = result.rows;
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -553,7 +560,7 @@ contractsRouter.get('/recycle', auth, async (req, res) => {
       LEFT JOIN clients cl ON c.client_id = cl.id
       WHERE c.deleted=true ORDER BY c.created_at DESC
     `);
-    res.json(result.rows);
+    let rows = result.rows;
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 contractsRouter.get('/:id', auth, async (req, res) => {
