@@ -85,15 +85,15 @@ export function Dashboard() {
         <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: '1.5rem' }}>
           <div className="metric-card" style={{ background: '#F1EFE8' }}>
             <div className="metric-label" style={{ color: '#5F5E5A' }}>Silver Packages</div>
-            <div className="metric-val" style={{ color: '#444441' }}>{stats.contracts > 0 ? Math.round(stats.activeContracts * 0.4) : 0}</div>
+            <div className="metric-val" style={{ color: '#444441' }}>{stats.silverContracts || 0}</div>
           </div>
           <div className="metric-card" style={{ background: '#FAEEDA' }}>
             <div className="metric-label" style={{ color: '#854F0B' }}>Gold Packages</div>
-            <div className="metric-val" style={{ color: '#633806' }}>{stats.contracts > 0 ? Math.round(stats.activeContracts * 0.4) : 0}</div>
+            <div className="metric-val" style={{ color: '#633806' }}>{stats.goldContracts || 0}</div>
           </div>
           <div className="metric-card" style={{ background: '#E6F1FB' }}>
             <div className="metric-label" style={{ color: '#185FA5' }}>Platinum Packages</div>
-            <div className="metric-val" style={{ color: '#0C447C' }}>{stats.contracts > 0 ? Math.round(stats.activeContracts * 0.2) : 0}</div>
+            <div className="metric-val" style={{ color: '#0C447C' }}>{stats.platinumContracts || 0}</div>
           </div>
         </div>
         <div className="row2">
