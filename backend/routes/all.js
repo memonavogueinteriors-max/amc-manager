@@ -148,6 +148,7 @@ await getDb().query(
 
 clientsRouter.delete('/:id', auth, async (req, res) => {
   try {
+    if (req.user.role === 'sales') return res.status(403).json({ error: 'Sales role cannot delete clients' });
     await getDb().query('UPDATE clients SET deleted=true WHERE id=$1', [req.params.id]);
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -208,10 +209,11 @@ villasRouter.put('/:id', auth, async (req, res) => {
 
 villasRouter.delete('/:id', auth, async (req, res) => {
   try {
+    if (req.user.role === 'sales') return res.status(403).json({ error: 'Sales role cannot delete villas' });
     await getDb().query('UPDATE villas SET deleted=true WHERE id=$1', [req.params.id]);
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
-});
+});;
 
 villasRouter.get('/recycle', auth, async (req, res) => {
   try {
@@ -546,11 +548,11 @@ contractsRouter.put('/:id', auth, async (req, res) => {
 
 contractsRouter.delete('/:id', auth, async (req, res) => {
   try {
+    if (req.user.role === 'sales') return res.status(403).json({ error: 'Sales role cannot delete contracts' });
     await getDb().query('UPDATE contracts SET deleted=true WHERE id=$1', [req.params.id]);
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-
 contractsRouter.get('/recycle', auth, async (req, res) => {
   try {
     const result = await getDb().query(`
