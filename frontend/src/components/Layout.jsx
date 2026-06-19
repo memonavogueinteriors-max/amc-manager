@@ -28,9 +28,10 @@ export default function Layout() {
   };
 
   const visibleItems = navItems.filter(item => {
+    const path = item.to.replace('/', '');
     if (user.role === 'owner') return true;
-    if (user.role === 'manager') return !['users', 'commissions'].includes(item.to.replace('/', ''));
-    if (user.role === 'sales') return ['/', '/contracts', '/clients', '/villas', '/packages'].includes(item.to);
+    if (user.role === 'manager') return path !== 'commissions';
+    if (user.role === 'sales') return !['users', 'commissions'].includes(path);
     return true;
   });
 
