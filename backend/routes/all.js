@@ -392,32 +392,98 @@ const dashboardRouter = express.Router();
 dashboardRouter.get('/', auth, async (req, res) => {
   try {
     const db = getDb();
-    const contracts = await db.query("SELECT COUNT(*) as c FROM contracts WHERE deleted=false");
-    const activeContracts = await db.query("SELECT COUNT(*) as c FROM contracts WHERE status='active' AND deleted=false");
-    const expiringContracts = await db.query("SELECT COUNT(*) as c FROM contracts WHERE status='expiring' AND deleted=false");
-    const monthlyRevenue = await db.query("SELECT SUM(monthly_value) as t FROM contracts WHERE status IN ('active','expiring') AND deleted=false");
-    const openTickets = await db.query("SELECT COUNT(*) as c FROM tickets WHERE status NOT IN ('resolved','closed') AND deleted=false");
-    const urgentTickets = await db.query("SELECT COUNT(*) as c FROM tickets WHERE priority='urgent' AND status NOT IN ('resolved','closed') AND deleted=false");
-    const lowStock = await db.query("SELECT COUNT(*) as c FROM inventory WHERE in_stock < min_level");
-    const pendingOrders = await db.query("SELECT COUNT(*) as c FROM procurement_orders WHERE status='pending'");
-    const recentActivity = await db.query(`
+
+    const roleFilter = req.user.role === 'sales'
+      ? ' AND sales_person_id = $1'
+      : '';
+
+    const params = req.user.role === 'sales' ? [req.user.id] : [];
+
+    const contracts = await db.query(
+      `SELECT COUNT(*) as c FROM contracts WHERE deleted=false${roleFilter}`,
+      params
+    );
+
+    const activeContracts = await db.query(
+      `SELECT COUNT(*) as c FROM contracts WHERE status='active' AND deleted=false${roleFilter}`,
+      params
+    );
+
+    const expiringContracts = await db.query(
+      `SELECT COUNT(*) as c FROM contracts WHERE status='expiring' AND deleted=false${roleFilter}`,
+      params
+    );
+
+    const monthlyRevenue = await db.query(
+      `SELECT SUM(monthly_value) as t FROM contracts WHERE status IN ('active','expiring') AND deleted=false${roleFilter}`,
+      params
+    );
+
+    const packageCounts = await db.query(
+      `SELECT
+        SUM(CASE WHEN package ILIKE 'Silver%' THEN 1 ELSE 0 END) AS silver,
+        SUM(CASE WHEN package ILIKE 'Gold%' THEN 1 ELSE 0 END) AS gold,
+        SUM(CASE WHEN package ILIKE 'Platinum%' THEN 1 ELSE 0 END) AS platinum
+       FROM contracts
+       WHERE deleted=false${roleFilter}`,
+      params
+    );
+
+    const openTickets = await db.query(
+      "SELECT COUNT(*) as c FROM tickets WHERE status NOT IN ('resolved','closed') AND deleted=false"
+    );
+
+    const urgentTickets = await db.query(
+      "SELECT COUNT(*) as c FROM tickets WHERE priority='urgent' AND status NOT IN ('resolved','closed') AND deleted=false"
+    );
+
+    const lowStock = await db.query(
+      "SELECT COUNT(*) as c FROM inventory WHERE in_stock < min_level"
+    );
+
+    const pendingOrders = await db.query(
+      "SELECT COUNT(*) as c FROM procurement_orders WHERE status='pending'"
+    );
+
+    let recentActivityQuery = `
       SELECT 'ticket' as type, title as label, created_at FROM tickets WHERE deleted=false
-      UNION ALL SELECT 'contract' as type, contract_number as label, created_at FROM contracts WHERE deleted=false
-      UNION ALL SELECT 'order' as type, order_number as label, created_at FROM procurement_orders
+      UNION ALL
+      SELECT 'contract' as type, contract_number as label, created_at FROM contracts WHERE deleted=false
+      UNION ALL
+      SELECT 'order' as type, order_number as label, created_at FROM procurement_orders
       ORDER BY created_at DESC LIMIT 8
-    `);
+    `;
+
+    if (req.user.role === 'sales') {
+      recentActivityQuery = `
+        SELECT 'contract' as type, contract_number as label, created_at
+        FROM contracts
+        WHERE deleted=false AND sales_person_id=$1
+        ORDER BY created_at DESC LIMIT 8
+      `;
+    }
+
+    const recentActivity = await db.query(recentActivityQuery, params);
+
     res.json({
       contracts: parseInt(contracts.rows[0].c),
       activeContracts: parseInt(activeContracts.rows[0].c),
       expiringContracts: parseInt(expiringContracts.rows[0].c),
       monthlyRevenue: parseFloat(monthlyRevenue.rows[0].t) || 0,
+
+      silverContracts: parseInt(packageCounts.rows[0].silver) || 0,
+      goldContracts: parseInt(packageCounts.rows[0].gold) || 0,
+      platinumContracts: parseInt(packageCounts.rows[0].platinum) || 0,
+
       openTickets: parseInt(openTickets.rows[0].c),
       urgentTickets: parseInt(urgentTickets.rows[0].c),
       lowStock: parseInt(lowStock.rows[0].c),
       pendingOrders: parseInt(pendingOrders.rows[0].c),
       recentActivity: recentActivity.rows
     });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── CONTRACTS ─────────────────────────────────────────────
