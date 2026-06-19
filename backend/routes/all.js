@@ -562,8 +562,6 @@ contractsRouter.get('/:id', auth, async (req, res) => {
         c.*,
         v.villa_number,
         v.block,
-        v.community,
-        v.address,
         cl.name AS client_name,
         cl.phone AS client_phone,
         cl.email AS client_email,
