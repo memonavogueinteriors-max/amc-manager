@@ -502,7 +502,9 @@ export function Villas() {
                       <td>{v.contract_status ? <span className={`pill pill-${v.contract_status}`}>{v.contract_status}</span> : <span style={{ color: 'var(--text-3)', fontSize: 12 }}>No contract</span>}</td>
                       <td style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-sm" onClick={() => openEdit(v)}>Edit</button>
-                        <button className="btn btn-sm btn-danger" onClick={() => del(v.id)}>Delete</button>
+                        {JSON.parse(localStorage.getItem('amc_user') || '{}').role !== 'sales' && (
+                          <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -661,7 +663,7 @@ export function Clients() {
               <tbody>
                 {loading ? <tr><td colSpan={6} className="loading">Loading...</td></tr> :
                   clients.map(c => (
-                    <tr key={c.id} style={{ cursor: 'pointer' }} onClick={(e) => { if (!['BUTTON','SELECT','OPTION'].includes(e.target.tagName)) navigate(`/contracts/${c.id}`); }}>
+                    <tr key={c.id}>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div className="avatar">{initials(c.name)}</div>
@@ -674,7 +676,9 @@ export function Clients() {
                       <td>{c.total_monthly ? `AED ${Math.round(c.total_monthly).toLocaleString()}` : '—'}</td>
                       <td style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
-                        <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
+                        {JSON.parse(localStorage.getItem('amc_user') || '{}').role !== 'sales' && (
+                          <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -820,3 +824,4 @@ export function Clients() {
     </div>
   );
 }
+
