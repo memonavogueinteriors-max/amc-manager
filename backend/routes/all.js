@@ -557,40 +557,39 @@ contractsRouter.get('/:id', auth, async (req, res) => {
   try {
     const contractId = req.params.id;
 
-    let query = `
+    let sql = `
       SELECT 
         c.*,
         v.villa_number,
         v.block,
         cl.name AS client_name,
         cl.phone AS client_phone,
-        cl.email AS client_email,
-        u.name AS sales_person_name
+        sp.name AS sales_person_name
       FROM contracts c
       LEFT JOIN villas v ON c.villa_id = v.id
       LEFT JOIN clients cl ON c.client_id = cl.id
-      LEFT JOIN users u ON c.sales_person_id = u.id
+      LEFT JOIN users sp ON c.sales_person_id = sp.id
       WHERE c.id = $1
-        AND COALESCE(c.deleted, false) = false
+        AND c.deleted = false
     `;
 
     const params = [contractId];
 
     if (req.user.role === 'sales') {
-      query += ` AND c.sales_person_id = $2`;
+      sql += ` AND c.sales_person_id = $2`;
       params.push(req.user.id);
     }
 
-    const result = await getDb().query(query, params);
+    const result = await getDb().query(sql, params);
 
-    if (result.rows.length === 0) {
+    if (!result.rows[0]) {
       return res.status(404).json({ error: 'Contract not found' });
     }
 
     res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Get contract detail error:', err);
-    res.status(500).json({ error: 'Failed to load contract detail' });
+  } catch (e) {
+    console.error('Get contract detail error:', e);
+    res.status(500).json({ error: e.message });
   }
 });
 contractsRouter.post('/:id/emergency-callout', auth, async (req, res) => {
