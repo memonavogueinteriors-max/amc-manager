@@ -211,7 +211,7 @@ export default function ContractDetail() {
         </div>
       </div>
       <div className="content">
-        <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(4,1fr)', marginBottom: '1.5rem' }}>
+        <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(5,1fr)', marginBottom: '1.5rem' }}>
           <div className="metric-card">
             <div className="metric-label">Client</div>
             <div style={{ fontWeight: 600, fontSize: 15 }}>{contract.client_name}</div>
