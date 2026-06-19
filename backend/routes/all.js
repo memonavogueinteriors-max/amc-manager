@@ -54,7 +54,30 @@ clientsRouter.post('/', auth, async (req, res) => {
 );
     const client_id = result.rows[0].id;
 
-    if (villa_id && pkg && start_date) {
+   let finalVillaId = villa_id;
+
+if (!finalVillaId && property_number) {
+  const villaCheck = await getDb().query(
+    `SELECT id FROM villas 
+     WHERE villa_number=$1 AND COALESCE(block,'')=$2 AND deleted=false
+     LIMIT 1`,
+    [property_number, block || '']
+  );
+
+  if (villaCheck.rows[0]) {
+    finalVillaId = villaCheck.rows[0].id;
+  } else {
+    const newVilla = await getDb().query(
+      `INSERT INTO villas (villa_number, block, client_id, notes)
+       VALUES ($1,$2,$3,$4)
+       RETURNING id`,
+      [property_number, block || '', client_id, 'Auto-created from client form']
+    );
+    finalVillaId = newVilla.rows[0].id;
+  }
+}
+
+if (finalVillaId && pkg && start_date) {
       const pkgPrices = {
         'Silver - 3 AC': 425, 'Gold - 3 AC': 546, 'Platinum - 3 AC': 712,
         'Silver - 4 AC': 479, 'Gold - 4 AC': 617, 'Platinum - 4 AC': 812,
@@ -97,7 +120,7 @@ clientsRouter.post('/', auth, async (req, res) => {
           emergency_callouts_total, next_service_date, status
         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
         [
-          contract_number, file_number, parseInt(villa_id), client_id,
+          contract_number, file_number, parseInt(finalVillaId), client_id,
           pkg, monthly_value, annual_value, start_date, end_date,
           property_type || 'Villa',
           sales_person_id ? parseInt(sales_person_id) : null,
