@@ -553,7 +553,7 @@ contractsRouter.delete('/:id', auth, async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-contractsRouter.get('/recycle', auth, async (req, res) => {
+contractsRouter.get('/:id', auth, async (req, res) => {
   try {
     const result = await getDb().query(`
       SELECT c.*, v.villa_number, v.block, cl.name as client_name
