@@ -49,9 +49,11 @@ export default function ContractDetail() {
 
   const load = async () => {
     try {
-      const c = await fetch(`${API}/contracts/${id}`, { headers: authHeaders() }).then(r => r.json());
+      const cRes = await fetch(`${API}/contracts/${id}`, { headers: authHeaders() });
+      const c = await cRes.json();
       setContract(c);
-      const r = await fetch(`${API}/service-reports?contract_id=${id}`, { headers: authHeaders() }).then(r => r.json());
+      const rRes = await fetch(`${API}/service-reports?contract_id=${id}`, { headers: authHeaders() });
+      const r = await rRes.json();
       setReports(Array.isArray(r) ? r : []);
     } catch(e) { console.error(e); }
   };
@@ -99,6 +101,16 @@ export default function ContractDetail() {
       setModal(false);
     } catch(e) { alert('Error: ' + e.message); }
     setSaving(false);
+  };
+
+  const logEmergencyCallout = async () => {
+    if (!window.confirm('Log an emergency call-out for this contract?')) return;
+    try {
+      const res = await fetch(`${API}/contracts/${id}/emergency-callout`, { method: 'POST', headers: authHeaders() });
+      const data = await res.json();
+      if (data.error) { alert(data.error); return; }
+      await load();
+    } catch(e) { alert('Error: ' + e.message); }
   };
 
   const generatePDF = () => {
@@ -188,7 +200,7 @@ export default function ContractDetail() {
     doc.save(`VAC-Report-${contract?.contract_number}-${selectedVisit?.month}.pdf`);
   };
 
-  if (!contract) return <div className="loading">Loading contract...</div>;
+  if (!contract || !contract.contract_number) return <div className="loading">Loading contract...</div>;
 
   const tier = getTier(contract.package);
   const tierColor = { Silver: '#B4B2A9', Gold: '#EF9F27', Platinum: '#185FA5' };
@@ -196,8 +208,13 @@ export default function ContractDetail() {
   const start = new Date(contract.start_date);
   const end = new Date(contract.end_date);
   const now = new Date();
-  const pct = Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100)));
+  const pct = Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100))) || 0;
   const pctColor = pct < 30 ? '#3B6D11' : pct < 70 ? '#BA7517' : pct < 90 ? '#E07B2A' : '#A32D2D';
+  const annualVal = contract.annual_value || (contract.monthly_value * 12) || 0;
+  const visitsUsed = reports.length;
+  const visitsTotal = contract.visits_total || 3;
+  const calloutsUsed = contract.emergency_callouts_used || 0;
+  const calloutsTotal = contract.emergency_callouts_total || 1;
 
   return (
     <div>
@@ -214,18 +231,18 @@ export default function ContractDetail() {
         <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(5,1fr)', marginBottom: '1.5rem' }}>
           <div className="metric-card">
             <div className="metric-label">Client</div>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>{contract.client_name}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{contract.client_phone}</div>
+            <div style={{ fontWeight: 600, fontSize: 15 }}>{contract.client_name || '—'}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{contract.client_phone || ''}</div>
           </div>
           <div className="metric-card">
             <div className="metric-label">Villa</div>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>{contract.villa_number}, Block {contract.block}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{contract.property_type}</div>
+            <div style={{ fontWeight: 600, fontSize: 15 }}>{contract.villa_number || '—'}, Block {contract.block || '—'}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{contract.property_type || 'Villa'}</div>
           </div>
           <div className="metric-card">
             <div className="metric-label">Annual Value</div>
-            <div style={{ fontWeight: 600, fontSize: 15 }}>AED {(contract.annual_value || contract.monthly_value * 12)?.toLocaleString()}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>AED {contract.monthly_value?.toLocaleString()}/mo</div>
+            <div style={{ fontWeight: 600, fontSize: 15 }}>AED {annualVal.toLocaleString()}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-3)' }}>AED {(contract.monthly_value || 0).toLocaleString()}/mo</div>
           </div>
           <div className="metric-card">
             <div className="metric-label">Contract Period</div>
@@ -236,6 +253,25 @@ export default function ContractDetail() {
                 <div style={{ height: '100%', width: `${pct}%`, background: pctColor, borderRadius: 10 }}></div>
               </div>
             </div>
+          </div>
+          <div className="metric-card">
+            <div className="metric-label">Visits Used</div>
+            <div style={{ fontWeight: 700, fontSize: 20, color: visitsUsed >= visitsTotal ? '#3B6D11' : '#185FA5' }}>
+              {visitsUsed} / {visitsTotal}
+            </div>
+            <div style={{ marginTop: 6 }}>
+              <div style={{ height: 6, background: 'var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${Math.min(100, (visitsUsed / visitsTotal) * 100)}%`, background: '#185FA5', borderRadius: 10 }}></div>
+              </div>
+            </div>
+            <div style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: '#854F0B' }}>
+              🚨 {calloutsUsed} / {calloutsTotal} Emergency Call-outs
+            </div>
+            <button className="btn btn-sm" style={{ marginTop: 6, width: '100%', justifyContent: 'center', background: '#FAEEDA', color: '#854F0B' }}
+              disabled={calloutsUsed >= calloutsTotal}
+              onClick={logEmergencyCallout}>
+              + Log Emergency Call-out
+            </button>
           </div>
         </div>
 
