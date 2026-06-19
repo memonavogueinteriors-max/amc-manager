@@ -594,18 +594,43 @@ contractsRouter.get('/:id', auth, async (req, res) => {
 });
 contractsRouter.post('/:id/emergency-callout', auth, async (req, res) => {
   try {
-    const result = await getDb().query(`
-      SELECT c.*, v.villa_number, v.block, cl.name as client_name,
-             cl.phone as client_phone, sp.name as sales_person_name
-      FROM contracts c
-      LEFT JOIN villas v ON c.villa_id = v.id
-      LEFT JOIN clients cl ON c.client_id = cl.id
-      LEFT JOIN users sp ON c.sales_person_id = sp.id
-      WHERE c.id = $1
-    `, [req.params.id]);
-    if (!result.rows[0]) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    const contractId = req.params.id;
+
+    const current = await getDb().query(
+      `SELECT id, emergency_callouts_used, emergency_callouts_total
+       FROM contracts
+       WHERE id = $1 AND deleted = false`,
+      [contractId]
+    );
+
+    if (!current.rows[0]) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+
+    const used = parseInt(current.rows[0].emergency_callouts_used || 0);
+    const total = parseInt(current.rows[0].emergency_callouts_total || 0);
+
+    if (used >= total) {
+      return res.status(400).json({ error: 'No emergency call-outs remaining' });
+    }
+
+    const updated = await getDb().query(
+      `UPDATE contracts
+       SET emergency_callouts_used = COALESCE(emergency_callouts_used, 0) + 1
+       WHERE id = $1
+       RETURNING *`,
+      [contractId]
+    );
+
+    res.json({
+      success: true,
+      contract: updated.rows[0],
+      message: 'Emergency call-out logged successfully'
+    });
+  } catch (e) {
+    console.error('Emergency call-out error:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 contractsRouter.put('/recycle/:id', auth, async (req, res) => {
   try {
