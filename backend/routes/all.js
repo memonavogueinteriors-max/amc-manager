@@ -8,163 +8,94 @@ const clientsRouter = express.Router();
 clientsRouter.get('/', auth, async (req, res) => { // ROLE_FILTER
   try {
     const result = await getDb().query(`
-  SELECT
-    cl.*,
-    v.villa_number,
-    v.block,
-    c.package,
-    c.property_type,
-    c.monthly_value,
-    c.end_date,
-    c.status as contract_status,
-    COUNT(c.id) OVER(PARTITION BY cl.id) as contract_count,
-    SUM(c.monthly_value) OVER(PARTITION BY cl.id) as total_monthly
-  FROM clients cl
-  LEFT JOIN contracts c ON cl.id = c.client_id AND c.deleted=false
-  LEFT JOIN villas v ON v.id = c.villa_id
-  WHERE cl.deleted=false
-  ORDER BY cl.name
-`);
+      SELECT
+        cl.*,
+        COUNT(c.id) as contract_count,
+        COALESCE(SUM(c.monthly_value), 0) as total_monthly
+      FROM clients cl
+      LEFT JOIN contracts c ON cl.id = c.client_id AND c.deleted=false
+      WHERE cl.deleted=false
+      GROUP BY cl.id
+      ORDER BY cl.name
+    `);
     res.json(result.rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 clientsRouter.post('/', auth, async (req, res) => {
   try {
-   const {
-  name, phone, email, address, notes,
-  property_number, block, property_type,
-  villa_id, package: pkg, start_date,
-  sales_person_id, commission_amount
-} = req.body;
+    const { name, phone, email, address } = req.body;
 
-    const result = await getDb().query(
-  `INSERT INTO clients (name, phone, email, address, property_number, block, property_type, notes)
-   VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-  [
-    name,
-    phone || '',
-    email || '',
-    address || '',
-    property_number || '',
-    block || '',
-    property_type || 'Villa',
-    notes || ''
-  ]
-);
-    const client_id = result.rows[0].id;
+    if (!name) return res.status(400).json({ error: 'Client name is required' });
 
-   let finalVillaId = villa_id;
+    const db = getDb();
 
-if (!finalVillaId && property_number) {
-  const villaCheck = await getDb().query(
-    `SELECT id FROM villas 
-     WHERE villa_number=$1 AND COALESCE(block,'')=$2 AND deleted=false
-     LIMIT 1`,
-    [property_number, block || '']
-  );
-
-  if (villaCheck.rows[0]) {
-    finalVillaId = villaCheck.rows[0].id;
-  } else {
-    const newVilla = await getDb().query(
-      `INSERT INTO villas (villa_number, block, client_id, notes)
-       VALUES ($1,$2,$3,$4)
-       RETURNING id`,
-      [property_number, block || '', client_id, 'Auto-created from client form']
+    const clientResult = await db.query(
+      `INSERT INTO clients (name, phone, email, address, notes)
+       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
+      [name, phone || '', email || '', address || '', '']
     );
-    finalVillaId = newVilla.rows[0].id;
-  }
-}
 
-if (finalVillaId && pkg && start_date) {
-      const pkgPrices = {
-        'Silver - 3 AC': 425, 'Gold - 3 AC': 546, 'Platinum - 3 AC': 712,
-        'Silver - 4 AC': 479, 'Gold - 4 AC': 617, 'Platinum - 4 AC': 812,
-        'Silver - 6 AC': 588, 'Gold - 6 AC': 758, 'Platinum - 6 AC': 1017
-      };
-      const pkgAnnual = {
-        'Silver - 3 AC': 5100, 'Gold - 3 AC': 6550, 'Platinum - 3 AC': 8550,
-        'Silver - 4 AC': 5750, 'Gold - 4 AC': 7400, 'Platinum - 4 AC': 9750,
-        'Silver - 6 AC': 7050, 'Gold - 6 AC': 9100, 'Platinum - 6 AC': 12200
-      };
-      const pkgCallouts = {
-        'Silver - 3 AC': 1, 'Gold - 3 AC': 2, 'Platinum - 3 AC': 3,
-        'Silver - 4 AC': 1, 'Gold - 4 AC': 2, 'Platinum - 4 AC': 3,
-        'Silver - 6 AC': 1, 'Gold - 6 AC': 2, 'Platinum - 6 AC': 3
-      };
+    const client_id = clientResult.rows[0].id;
 
-      const monthly_value = pkgPrices[pkg] || 425;
-      const annual_value = pkgAnnual[pkg] || 5100;
+    // Create a simple placeholder property record so the contract can be created immediately.
+    // Owner can later manage full villa details from Villas page if needed.
+    const villaResult = await db.query(
+      `INSERT INTO villas (villa_number, block, client_id, notes)
+       VALUES ($1,$2,$3,$4) RETURNING id`,
+      [`Property ${client_id}`, '', client_id, address || 'Auto-created from client form']
+    );
 
-      const year = new Date().getFullYear();
-      const count = await getDb().query("SELECT COUNT(*) as c FROM contracts");
-      const num = String(parseInt(count.rows[0].c) + 1).padStart(3, '0');
-      const contract_number = `VAC-${year}-${num}`;
-      const file_number = `FILE-${String(parseInt(count.rows[0].c) + 1).padStart(4, '0')}`;
+    const villa_id = villaResult.rows[0].id;
 
-      const startDate = new Date(start_date);
-      const endDate = new Date(startDate);
-      endDate.setFullYear(endDate.getFullYear() + 1);
-      const end_date = endDate.toISOString().split('T')[0];
+    const year = new Date().getFullYear();
+    const count = await db.query("SELECT COUNT(*) as c FROM contracts");
+    const nextNum = parseInt(count.rows[0].c) + 1;
+    const contract_number = `VAC-${year}-${String(nextNum).padStart(3, '0')}`;
+    const file_number = `FILE-${String(nextNum).padStart(4, '0')}`;
 
-      const nextService = new Date(startDate);
-      nextService.setMonth(nextService.getMonth() + 4);
-      const next_service_date = nextService.toISOString().split('T')[0];
+    const today = new Date();
+    const start_date = today.toISOString().split('T')[0];
 
-      await getDb().query(
-        `INSERT INTO contracts (
-          contract_number, file_number, villa_id, client_id, package,
-          monthly_value, annual_value, start_date, end_date, property_type,
-          sales_person_id, commission_amount, visits_total,
-          emergency_callouts_total, next_service_date, status
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
-        [
-          contract_number, file_number, parseInt(finalVillaId), client_id,
-          pkg, monthly_value, annual_value, start_date, end_date,
-          property_type || 'Villa',
-          sales_person_id ? parseInt(sales_person_id) : null,
-          parseFloat(commission_amount || 0),
-          3, pkgCallouts[pkg] || 1, next_service_date, 'active'
-        ]
-      );
+    const endDate = new Date(today);
+    endDate.setFullYear(endDate.getFullYear() + 1);
+    const end_date = endDate.toISOString().split('T')[0];
 
-      if (sales_person_id && commission_amount && parseFloat(commission_amount) > 0) {
-        const newContract = await getDb().query('SELECT id FROM contracts WHERE contract_number=$1', [contract_number]);
-        if (newContract.rows[0]) {
-          await getDb().query(
-            'INSERT INTO commissions (user_id, contract_id, amount, type) VALUES ($1,$2,$3,$4)',
-            [parseInt(sales_person_id), newContract.rows[0].id, parseFloat(commission_amount), 'contract_signup']
-          );
-        }
-      }
-    }
+    const nextService = new Date(today);
+    nextService.setMonth(nextService.getMonth() + 4);
+    const next_service_date = nextService.toISOString().split('T')[0];
 
-    res.json({ id: client_id });
+    const defaultPackage = 'Silver - 3 AC';
+
+    await db.query(
+      `INSERT INTO contracts (
+        contract_number, file_number, villa_id, client_id, package,
+        monthly_value, annual_value, start_date, end_date, property_type,
+        visits_total, emergency_callouts_total, next_service_date, status, notes
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+      [
+        contract_number, file_number, villa_id, client_id, defaultPackage,
+        425, 5100, start_date, end_date, 'Villa',
+        3, 1, next_service_date, 'pending',
+        'Auto-created when client was added. Complete package/date/status in Contracts table.'
+      ]
+    );
+
+    res.json({ id: client_id, contract_number, file_number });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 clientsRouter.put('/:id', auth, async (req, res) => {
   try {
-    const { name, phone, email, address, property_number, block, property_type, notes } = req.body;
+    const { name, phone, email, address } = req.body;
 
-await getDb().query(
-  `UPDATE clients
-   SET name=$1, phone=$2, email=$3, address=$4,
-       property_number=$5, block=$6, property_type=$7, notes=$8
-   WHERE id=$9`,
-  [
-    name,
-    phone || '',
-    email || '',
-    address || '',
-    property_number || '',
-    block || '',
-    property_type || 'Villa',
-    notes || '',
-    req.params.id
-  ]
-);
+    await getDb().query(
+      `UPDATE clients
+       SET name=$1, phone=$2, email=$3, address=$4
+       WHERE id=$5`,
+      [name, phone || '', email || '', address || '', req.params.id]
+    );
+
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -516,7 +447,7 @@ contractsRouter.get('/', auth, async (req, res) => {
   try {
     const { status } = req.query;
     let sql = `
-      SELECT c.*, v.villa_number, v.block, cl.name as client_name,
+      SELECT c.*, v.villa_number, v.block, cl.name as client_name, cl.address as client_address,
              u.name as rm_name, sp.name as sales_person_name
       FROM contracts c
       LEFT JOIN villas v ON c.villa_id = v.id
@@ -610,27 +541,53 @@ contractsRouter.post('/', auth, async (req, res) => {
 contractsRouter.put('/:id', auth, async (req, res) => {
   try {
     const {
-      package: pkg, monthly_value, start_date, end_date, status,
+      package: pkg, monthly_value, annual_value, start_date, end_date, status,
       relationship_manager_id, sales_person_id, property_type,
-      commission_amount, next_service_date, notes
+      commission_amount, next_service_date, notes, client_address
     } = req.body;
-    await getDb().query(
+
+    const db = getDb();
+
+    const current = await db.query(
+      'SELECT id, client_id FROM contracts WHERE id=$1 AND deleted=false',
+      [req.params.id]
+    );
+
+    if (!current.rows[0]) {
+      return res.status(404).json({ error: 'Contract not found' });
+    }
+
+    await db.query(
       `UPDATE contracts SET
-        package=$1, monthly_value=$2, start_date=$3, end_date=$4,
-        status=$5, relationship_manager_id=$6, notes=$7,
-        property_type=$8, sales_person_id=$9, commission_amount=$10,
-        next_service_date=$11
-      WHERE id=$12`,
+        package=$1, monthly_value=$2, annual_value=$3, start_date=$4, end_date=$5,
+        status=$6, relationship_manager_id=$7, notes=$8,
+        property_type=$9, sales_person_id=$10, commission_amount=$11,
+        next_service_date=$12
+      WHERE id=$13`,
       [
-        pkg, parseFloat(monthly_value), start_date, end_date, status,
+        pkg || 'Silver - 3 AC',
+        parseFloat(monthly_value || 0),
+        parseFloat(annual_value || ((parseFloat(monthly_value || 0)) * 12)),
+        start_date || null,
+        end_date || null,
+        status || 'pending',
         relationship_manager_id ? parseInt(relationship_manager_id) : null,
-        notes || '', property_type || 'Villa',
+        notes || '',
+        property_type || 'Villa',
         sales_person_id ? parseInt(sales_person_id) : null,
         parseFloat(commission_amount || 0),
         next_service_date || null,
         req.params.id
       ]
     );
+
+    if (typeof client_address !== 'undefined') {
+      await db.query(
+        'UPDATE clients SET address=$1 WHERE id=$2',
+        [client_address || '', current.rows[0].client_id]
+      );
+    }
+
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
