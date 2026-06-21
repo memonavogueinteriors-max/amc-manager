@@ -136,12 +136,6 @@ export function Contracts() {
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [modal, setModal] = useState(false);
-  const [editItem, setEditItem] = useState(null);
-  const [villas, setVillas] = useState([]);
-  const [clients, setClients] = useState([]);
-  const emptyForm = { villa_id: '', client_id: '', package: 'Silver - 3 AC', monthly_value: 425, start_date: '', end_date: '', next_service_date: '', property_type: 'Villa', notes: '' };
-  const [form, setForm] = useState(emptyForm);
 
   const pkgPrices = {
     'Silver - 3 AC': 425, 'Gold - 3 AC': 546, 'Platinum - 3 AC': 712,
@@ -149,16 +143,21 @@ export function Contracts() {
     'Silver - 6 AC': 588, 'Gold - 6 AC': 758, 'Platinum - 6 AC': 1017
   };
 
-  const load = () => {
-    const params = filter !== 'all' ? `?status=${filter}` : '';
-    apiFetch('/contracts' + params).then(r => { setContracts(r); setLoading(false); }).catch(console.error);
+  const pkgAnnual = {
+    'Silver - 3 AC': 5100, 'Gold - 3 AC': 6550, 'Platinum - 3 AC': 8550,
+    'Silver - 4 AC': 5750, 'Gold - 4 AC': 7400, 'Platinum - 4 AC': 9750,
+    'Silver - 6 AC': 7050, 'Gold - 6 AC': 9100, 'Platinum - 6 AC': 12200
   };
 
-  useEffect(() => {
-    load();
-    apiFetch('/villas').then(setVillas).catch(console.error);
-    apiFetch('/clients').then(setClients).catch(console.error);
-  }, [filter]);
+  const packageOptions = Object.keys(pkgPrices);
+
+  const load = () => {
+    setLoading(true);
+    const params = filter !== 'all' ? `?status=${filter}` : '';
+    apiFetch('/contracts' + params).then(r => { setContracts(r); setLoading(false); }).catch(e => { console.error(e); setLoading(false); });
+  };
+
+  useEffect(() => { load(); }, [filter]);
 
   const calcDates = (startDateStr) => {
     if (!startDateStr) return { end_date: '', next_service_date: '' };
@@ -170,29 +169,48 @@ export function Contracts() {
     return { end_date: end.toISOString().split('T')[0], next_service_date: next.toISOString().split('T')[0] };
   };
 
-  const openNew = () => { setEditItem(null); setForm(emptyForm); setModal(true); };
-  const openEdit = (c) => {
-    setEditItem(c);
-    setForm({ villa_id: c.villa_id, client_id: c.client_id, package: c.package, monthly_value: c.monthly_value, start_date: c.start_date, end_date: c.end_date, next_service_date: c.next_service_date || '', property_type: c.property_type || 'Villa', notes: c.notes || '' });
-    setModal(true);
-  };
+  const updateContractRow = async (contract, changes) => {
+    const next = { ...contract, ...changes };
 
-  const save = async () => {
+    if (changes.package) {
+      next.monthly_value = pkgPrices[changes.package] || 425;
+      next.annual_value = pkgAnnual[changes.package] || ((pkgPrices[changes.package] || 425) * 12);
+    }
+
+    if (changes.start_date) {
+      const dates = calcDates(changes.start_date);
+      next.end_date = dates.end_date;
+      next.next_service_date = dates.next_service_date;
+    }
+
+    setContracts(prev => prev.map(c => c.id === contract.id ? next : c));
+
     try {
       const body = {
-        villa_id: parseInt(form.villa_id), client_id: parseInt(form.client_id),
-        package: form.package, monthly_value: parseFloat(form.monthly_value),
-        start_date: form.start_date, end_date: form.end_date,
-        next_service_date: form.next_service_date,
-        property_type: form.property_type || 'Villa', notes: form.notes || ''
+        package: next.package || 'Silver - 3 AC',
+        monthly_value: parseFloat(next.monthly_value || 425),
+        annual_value: parseFloat(next.annual_value || pkgAnnual[next.package] || 5100),
+        start_date: next.start_date || '',
+        end_date: next.end_date || '',
+        next_service_date: next.next_service_date || '',
+        status: next.status || 'pending',
+        property_type: next.property_type || 'Villa',
+        notes: next.notes || '',
+        client_address: next.client_address || ''
       };
-      if (editItem) {
-        await fetch(`${API}/contracts/${editItem.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({...body, status: editItem.status}) });
-      } else {
-        await fetch(`${API}/contracts`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(body) });
-      }
-      setModal(false); load();
-    } catch(e) { alert('Error: ' + e.message); }
+
+      const res = await fetch(`${API}/contracts/${contract.id}`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Update failed');
+    } catch (e) {
+      alert('Error updating contract: ' + e.message);
+      load();
+    }
   };
 
   const del = async (id) => {
@@ -231,10 +249,10 @@ export function Contracts() {
     doc.setDrawColor(...gold); doc.setLineWidth(0.3); doc.line(20, 105, 190, 105);
     const details = [
       ['Contract Number', c.contract_number], ['File Number', c.file_number || '—'],
-      ['Property Type', c.property_type || 'Villa'], ['Villa', `${c.villa_number}, Block ${c.block}`],
-      ['Client Name', c.client_name], ['Package', c.package],
-      ['Annual Value', `AED ${(c.annual_value || c.monthly_value * 12)?.toLocaleString()}`],
-      ['Monthly Value', `AED ${c.monthly_value?.toLocaleString()}`],
+      ['Client Name', c.client_name], ['Address', c.client_address || '—'],
+      ['Property Type', c.property_type || 'Villa'], ['Package', c.package],
+      ['Annual Value', `AED ${(c.annual_value || pkgAnnual[c.package] || c.monthly_value * 12 || 0)?.toLocaleString()}`],
+      ['Monthly Value', `AED ${Number(c.monthly_value || 0)?.toLocaleString()}`],
       ['Start Date', c.start_date], ['End Date', c.end_date], ['Status', c.status?.toUpperCase()],
     ];
     let y = 115;
@@ -277,12 +295,14 @@ export function Contracts() {
     doc.save(`VAC-Contract-${c.contract_number}.pdf`);
   };
 
+  const userRole = JSON.parse(localStorage.getItem('amc_user') || '{}').role;
+
   return (
     <div>
       <div className="topbar">
         <div className="topbar-title">Contracts</div>
         <div className="topbar-right">
-          <button className="btn btn-primary" onClick={openNew}>+ New Contract</button>
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Contracts auto-create when a client is added</span>
         </div>
       </div>
       <div className="content">
@@ -298,37 +318,64 @@ export function Contracts() {
             <table>
               <thead>
                 <tr>
-                  <th>Contract #</th><th>File #</th><th>Villa</th><th>Client</th>
-                  <th>Property</th><th>Package</th><th>Annual</th><th>Start</th>
-                  <th>End</th><th>Next Service</th><th>Progress</th><th>Status</th><th>Actions</th>
+                  <th>Contract #</th><th>File #</th><th>Client</th><th>Address</th>
+                  <th>Package</th><th>Annual</th><th>Start</th><th>End</th>
+                  <th>Next Service</th><th>Progress</th><th>Status</th><th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {loading ? <tr><td colSpan={13} className="loading">Loading...</td></tr> :
-                  contracts.length === 0 ? <tr><td colSpan={13} className="empty">No contracts found. Click "+ New Contract" to create one.</td></tr> :
+                {loading ? <tr><td colSpan={12} className="loading">Loading...</td></tr> :
+                  contracts.length === 0 ? <tr><td colSpan={12} className="empty">No contracts yet. Add a client first; a contract row will be created automatically.</td></tr> :
                   contracts.map(c => {
-                    const start = new Date(c.start_date);
-                    const end = new Date(c.end_date);
+                    const hasDates = c.start_date && c.end_date;
+                    const start = hasDates ? new Date(c.start_date) : null;
+                    const end = hasDates ? new Date(c.end_date) : null;
                     const now = new Date();
-                    const pct = Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100))) || 0;
+                    const pct = hasDates ? (Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100))) || 0) : 0;
                     const pctColor = pct < 30 ? '#3B6D11' : pct < 70 ? '#BA7517' : pct < 90 ? '#E07B2A' : '#A32D2D';
                     return (
-                      <tr key={c.id} style={{ cursor: 'pointer' }} onClick={(e) => { if (!['BUTTON','SELECT','OPTION'].includes(e.target.tagName)) navigate(`/contracts/${c.id}`); }}>
+                      <tr key={c.id} style={{ cursor: 'pointer' }} onClick={(e) => { if (!['BUTTON','SELECT','OPTION','INPUT'].includes(e.target.tagName)) navigate(`/contracts/${c.id}`); }}>
                         <td style={{ fontWeight: 500 }}>{c.contract_number}</td>
                         <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{c.file_number || '—'}</td>
-                        <td>{c.villa_number}, Block {c.block}</td>
-                        <td>{c.client_name}</td>
-                        <td style={{ fontSize: 12 }}>{c.property_type || 'Villa'}</td>
+                        <td>{c.client_name || '—'}</td>
                         <td>
-                          <span style={{
-                            background: c.package?.includes('Platinum') ? '#E6F1FB' : c.package?.includes('Gold') ? '#FAEEDA' : '#F1EFE8',
-                            color: c.package?.includes('Platinum') ? '#185FA5' : c.package?.includes('Gold') ? '#854F0B' : '#5F5E5A',
-                            padding: '3px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500
-                          }}>{c.package}</span>
+                          <input
+                            className="form-input"
+                            style={{ minWidth: 190, padding: '5px 8px', fontSize: 12 }}
+                            value={c.client_address || ''}
+                            placeholder="Client address"
+                            onChange={e => setContracts(prev => prev.map(x => x.id === c.id ? { ...x, client_address: e.target.value } : x))}
+                            onBlur={e => updateContractRow(c, { client_address: e.target.value })}
+                          />
                         </td>
-                        <td>AED {(c.annual_value || (c.monthly_value * 12))?.toLocaleString()}/yr</td>
-                        <td>{c.start_date}</td>
-                        <td>{c.end_date}</td>
+                        <td>
+                          <select
+                            value={c.package || 'Silver - 3 AC'}
+                            onChange={e => updateContractRow(c, { package: e.target.value })}
+                            style={{ minWidth: 145, padding: '5px 8px', borderRadius: 6, border: '0.5px solid var(--border-md)', background: c.package?.includes('Platinum') ? '#E6F1FB' : c.package?.includes('Gold') ? '#FAEEDA' : '#F1EFE8', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                          >
+                            {packageOptions.map(p => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                        </td>
+                        <td>AED {(c.annual_value || pkgAnnual[c.package] || ((c.monthly_value || 0) * 12))?.toLocaleString()}/yr</td>
+                        <td>
+                          <input
+                            className="form-input"
+                            type="date"
+                            style={{ minWidth: 130, padding: '5px 8px', fontSize: 12 }}
+                            value={c.start_date || ''}
+                            onChange={e => updateContractRow(c, { start_date: e.target.value })}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            className="form-input"
+                            type="date"
+                            style={{ minWidth: 130, padding: '5px 8px', fontSize: 12 }}
+                            value={c.end_date || ''}
+                            onChange={e => updateContractRow(c, { end_date: e.target.value })}
+                          />
+                        </td>
                         <td style={{ fontSize: 12, color: '#BA7517' }}>{c.next_service_date || '—'}</td>
                         <td>
                           <div style={{ minWidth: 80 }}>
@@ -339,21 +386,18 @@ export function Contracts() {
                           </div>
                         </td>
                         <td>
-                          <select value={c.status} onChange={async (e) => {
-                            await fetch(`${API}/contracts/${c.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify({ package: c.package, monthly_value: c.monthly_value, start_date: c.start_date, end_date: c.end_date, status: e.target.value, notes: c.notes || '', property_type: c.property_type || 'Villa' }) });
-                            load();
-                          }} style={{ padding: '3px 6px', borderRadius: 6, border: '0.5px solid var(--border-md)', background: c.status === 'active' ? '#EAF3DE' : c.status === 'ended' ? '#FCEBEB' : '#FAEEDA', color: c.status === 'active' ? '#3B6D11' : c.status === 'ended' ? '#A32D2D' : '#854F0B', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
-                            <option value="active">Active</option>
-                            <option value="processing">Processing</option>
-                            <option value="ended">Ended</option>
-                            <option value="expiring">Expiring</option>
+                          <select value={c.status || 'pending'} onChange={e => updateContractRow(c, { status: e.target.value })} style={{ padding: '5px 8px', borderRadius: 6, border: '0.5px solid var(--border-md)', background: c.status === 'active' ? '#EAF3DE' : c.status === 'ended' ? '#FCEBEB' : '#FAEEDA', color: c.status === 'active' ? '#3B6D11' : c.status === 'ended' ? '#A32D2D' : '#854F0B', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
                             <option value="pending">Pending</option>
+                            <option value="processing">Processing</option>
+                            <option value="active">Active</option>
+                            <option value="expiring">Expiring</option>
+                            <option value="ended">Ended</option>
                           </select>
                         </td>
                         <td style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
+                          <button className="btn btn-sm" onClick={() => navigate(`/contracts/${c.id}`)}>AMC Details</button>
                           <button className="btn btn-sm" style={{ background:'#EAF3DE', color:'#3B6D11' }} onClick={() => generatePDF(c)}>PDF</button>
-                          {JSON.parse(localStorage.getItem('amc_user') || '{}').role !== 'sales' && (
+                          {userRole !== 'sales' && (
                             <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
                           )}
                         </td>
@@ -366,92 +410,6 @@ export function Contracts() {
           </div>
         </div>
       </div>
-
-      {modal && (
-        <div className="modal-bg" onClick={e => e.target === e.currentTarget && setModal(false)}>
-          <div className="modal" style={{ width: 560 }}>
-            <div className="modal-header">
-              <div className="modal-title">{editItem ? 'Edit Contract' : 'New AMC Contract'}</div>
-              <button className="btn btn-sm" onClick={() => setModal(false)}>✕</button>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Client</label>
-                <select className="form-input" value={form.client_id} onChange={e => setForm({...form, client_id: e.target.value})}>
-                  <option value="">Select existing client</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Villa</label>
-                <select className="form-input" value={form.villa_id} onChange={e => setForm({...form, villa_id: e.target.value})}>
-                  <option value="">Select existing villa</option>
-                  {villas.map(v => <option key={v.id} value={v.id}>{v.villa_number}, Block {v.block}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Property Type</label>
-                <select className="form-input" value={form.property_type} onChange={e => setForm({...form, property_type: e.target.value})}>
-                  <option>Villa</option><option>Apartment</option><option>Townhouse</option><option>Estate</option><option>Penthouse</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Package</label>
-                <select className="form-input" value={form.package} onChange={e => setForm({...form, package: e.target.value, monthly_value: pkgPrices[e.target.value] || 425})}>
-                  <optgroup label="3 AC Units">
-                    <option value="Silver - 3 AC">Silver - 3 AC (AED 5,100/yr)</option>
-                    <option value="Gold - 3 AC">Gold - 3 AC (AED 6,550/yr)</option>
-                    <option value="Platinum - 3 AC">Platinum - 3 AC (AED 8,550/yr)</option>
-                  </optgroup>
-                  <optgroup label="4 AC Units">
-                    <option value="Silver - 4 AC">Silver - 4 AC (AED 5,750/yr)</option>
-                    <option value="Gold - 4 AC">Gold - 4 AC (AED 7,400/yr)</option>
-                    <option value="Platinum - 4 AC">Platinum - 4 AC (AED 9,750/yr)</option>
-                  </optgroup>
-                  <optgroup label="6 AC Units">
-                    <option value="Silver - 6 AC">Silver - 6 AC (AED 7,050/yr)</option>
-                    <option value="Gold - 6 AC">Gold - 6 AC (AED 9,100/yr)</option>
-                    <option value="Platinum - 6 AC">Platinum - 6 AC (AED 12,200/yr)</option>
-                  </optgroup>
-                </select>
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">Monthly Value (AED)</label>
-                <input className="form-input" type="number" value={form.monthly_value} onChange={e => setForm({...form, monthly_value: e.target.value})} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Start Date</label>
-                <input className="form-input" type="date" value={form.start_date} onChange={e => {
-                  const dates = calcDates(e.target.value);
-                  setForm({...form, start_date: e.target.value, ...dates});
-                }} />
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label">End Date (auto)</label>
-                <input className="form-input" type="date" value={form.end_date} readOnly style={{ background: 'var(--bg)' }} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Next Service (auto)</label>
-                <input className="form-input" type="date" value={form.next_service_date} readOnly style={{ background: 'var(--bg)' }} />
-              </div>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Notes</label>
-              <textarea className="form-input" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} />
-            </div>
-            <div className="modal-footer">
-              <button className="btn" onClick={() => setModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={save}>{editItem ? 'Update Contract' : 'Create Contract'}</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -593,7 +551,7 @@ export function Clients() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
-  const emptyForm = { name: '', phone: '', email: '', address: '', notes: '' };
+  const emptyForm = { name: '', phone: '', email: '', address: '' };
   const [form, setForm] = useState(emptyForm);
 
   const load = () => apiFetch('/clients').then(r => { setClients(r); setLoading(false); }).catch(console.error);
@@ -602,12 +560,17 @@ export function Clients() {
   const openNew = () => { setEditItem(null); setForm(emptyForm); setModal(true); };
   const openEdit = (c) => {
     setEditItem(c);
-    setForm({ name: c.name, phone: c.phone || '', email: c.email || '', address: c.address || '', notes: c.notes || '' });
+    setForm({ name: c.name || '', phone: c.phone || '', email: c.email || '', address: c.address || '' });
     setModal(true);
   };
 
   const save = async () => {
     try {
+      if (!form.name.trim()) {
+        alert('Client name is required');
+        return;
+      }
+
       if (editItem) {
         await fetch(`${API}/clients/${editItem.id}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(form) });
       } else {
@@ -623,7 +586,7 @@ export function Clients() {
     load();
   };
 
-  const initials = name => name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
+  const initials = name => (name || '').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase();
 
   return (
     <div>
@@ -637,9 +600,9 @@ export function Clients() {
         <div className="card">
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Client</th><th>Phone</th><th>Email</th><th>Contracts</th><th>Total/mo</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Client</th><th>Address</th><th>Phone</th><th>Email</th><th>Contracts</th><th>Total/mo</th><th>Actions</th></tr></thead>
               <tbody>
-                {loading ? <tr><td colSpan={6} className="loading">Loading...</td></tr> :
+                {loading ? <tr><td colSpan={7} className="loading">Loading...</td></tr> :
                   clients.map(c => (
                     <tr key={c.id}>
                       <td>
@@ -648,6 +611,7 @@ export function Clients() {
                           <span style={{ fontWeight: 500 }}>{c.name}</span>
                         </div>
                       </td>
+                      <td>{c.address || '—'}</td>
                       <td>{c.phone || '—'}</td>
                       <td>{c.email || '—'}</td>
                       <td>{c.contract_count || 0}</td>
@@ -678,9 +642,13 @@ export function Clients() {
               <label className="form-label">Full Name</label>
               <input className="form-input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
             </div>
+            <div className="form-group">
+              <label className="form-label">Address</label>
+              <input className="form-input" value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
+            </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Phone</label>
+                <label className="form-label">Phone Number</label>
                 <input className="form-input" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
               </div>
               <div className="form-group">
@@ -688,14 +656,11 @@ export function Clients() {
                 <input className="form-input" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Address</label>
-              <input className="form-input" value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Notes</label>
-              <textarea className="form-input" rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} />
-            </div>
+            {!editItem && (
+              <div style={{ fontSize: 12, color: 'var(--text-3)', background: 'var(--bg)', padding: 10, borderRadius: 8, marginTop: 8 }}>
+                Saving a new client will automatically create a draft contract row. Package, dates, address and status can be completed from the Contracts table.
+              </div>
+            )}
             <div className="modal-footer">
               <button className="btn" onClick={() => setModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={save}>{editItem ? 'Update' : 'Save Client'}</button>
