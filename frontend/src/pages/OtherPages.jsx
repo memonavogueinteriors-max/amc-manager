@@ -259,6 +259,27 @@ export function Schedule() {
     load();
   };
 
+  const googleCalendarLink = (s) => {
+    const date = (s.scheduled_date || '').replaceAll('-', '');
+    const nextDay = new Date(s.scheduled_date);
+    nextDay.setDate(nextDay.getDate() + 1);
+    const endDate = nextDay.toISOString().slice(0, 10).replaceAll('-', '');
+
+    const title = encodeURIComponent('VAC - ' + (s.service_type || 'Service Visit'));
+    const details = encodeURIComponent(
+      'Service Type: ' + (s.service_type || '') +
+      '\nTechnician: ' + (s.technician || '') +
+      '\nVilla: ' + (s.villa_number || '') + ', Block ' + (s.block || '') +
+      '\nNotes: ' + (s.notes || '')
+    );
+
+    return 'https://calendar.google.com/calendar/render?action=TEMPLATE' +
+      '&text=' + title +
+      '&dates=' + date + '/' + endDate +
+      '&details=' + details;
+  };
+
+
   const generateBookingLink = async () => {
     const dates = bookingForm.available_dates.filter(d => d !== '');
     if (dates.length === 0) return alert('Please add at least one date');
@@ -297,9 +318,20 @@ export function Schedule() {
                       <td>{s.duration_hours}h</td>
                       <td><span className={`pill pill-${s.status === 'scheduled' ? 'pending' : s.status === 'completed' ? 'active' : 'pending'}`}>{s.status}</span></td>
                       <td>
-                        {s.status === 'scheduled' && (
-                          <button className="btn btn-sm" onClick={() => updateStatus(s.id, 'completed')}>Complete</button>
-                        )}
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          <a
+                            className="btn btn-sm"
+                            href={googleCalendarLink(s)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ textDecoration: 'none' }}
+                          >
+                            Add to Google Calendar
+                          </a>
+                          {s.status === 'scheduled' && (
+                            <button className="btn btn-sm" onClick={() => updateStatus(s.id, 'completed')}>Complete</button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
