@@ -63,6 +63,17 @@ export function Dashboard() {
   const totalRevenue = stats.monthlyRevenue * 12;
   const profit = totalRevenue - totalExpenses;
 
+  const updateCommission = async (salesUser, field, value) => {
+    const updatedUser = { ...salesUser, [field]: value };
+    await fetch(`${API}/users/${salesUser.id}`, {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify(updatedUser)
+    });
+    const freshStats = await apiFetch('/users/sales-stats');
+    setSalesStats(freshStats);
+  };
+
   return (
     <div>
       <div className="topbar">
@@ -151,9 +162,24 @@ export function Dashboard() {
                       <td>{s.contracts_count || 0}</td>
                       <td>AED {Math.round(Number(s.total_value || 0)).toLocaleString()}</td>
                       <td>
-                        {s.commission_type === 'fixed'
-                          ? 'AED ' + Number(s.commission_value || 0).toLocaleString() + ' fixed'
-                          : Number(s.commission_value || 0) + '%'}
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <select
+                            className="form-input"
+                            value={s.commission_type || 'percentage'}
+                            onChange={(e) => updateCommission(s, 'commission_type', e.target.value)}
+                            style={{ width: 120, padding: 6 }}
+                          >
+                            <option value="percentage">%</option>
+                            <option value="fixed">Fixed AED</option>
+                          </select>
+                          <input
+                            className="form-input"
+                            type="number"
+                            value={s.commission_value || 0}
+                            onChange={(e) => updateCommission(s, 'commission_value', e.target.value)}
+                            style={{ width: 90, padding: 6 }}
+                          />
+                        </div>
                       </td>
                       <td style={{ fontWeight: 700 }}>
                         AED {Math.round(Number(s.commission_due || 0)).toLocaleString()}
@@ -462,9 +488,7 @@ export function Contracts() {
                         <td style={{ display: 'flex', gap: 6 }}>
                           <button className="btn btn-sm" onClick={() => navigate(`/contracts/${c.id}`)}>AMC Details</button>
                           <button className="btn btn-sm" style={{ background:'#EAF3DE', color:'#3B6D11' }} onClick={() => generatePDF(c)}>PDF</button>
-                          {userRole !== 'sales' && (
-                            <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
-                          )}
+                          <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
                         </td>
                       </tr>
                     );
@@ -683,9 +707,7 @@ export function Clients() {
                       <td>{c.total_monthly ? `AED ${Math.round(c.total_monthly).toLocaleString()}` : '—'}</td>
                       <td style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
-                        {JSON.parse(localStorage.getItem('amc_user') || '{}').role !== 'sales' && (
-                          <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
-                        )}
+                        <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
                       </td>
                     </tr>
                   ))

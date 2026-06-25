@@ -3,34 +3,23 @@ const { getDb } = require('../db/database');
 const { auth } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 
-function getStaffPrefix(role = '') {
-  const r = role.toLowerCase();
-  if (r === 'sales') return 'VAC-SALES';
-  if (r === 'manager') return 'VAC-MGR';
-  if (r === 'owner' || r === 'admin') return 'VAC-OWN';
-  return 'VAC-USER';
-}
-
-async function generateUniqueStaffId(db, role = 'sales') {
-  const prefix = getStaffPrefix(role);
-
+async function generateUniqueStaffId(db) {
   const result = await db.query(
     `SELECT unique_staff_id
      FROM users
-     WHERE unique_staff_id LIKE $1
-     ORDER BY unique_staff_id DESC
-     LIMIT 1`,
-    [`${prefix}-%`]
+     WHERE unique_staff_id LIKE 'VAC%'
+     ORDER BY CAST(REPLACE(unique_staff_id, 'VAC', '') AS INTEGER) DESC
+     LIMIT 1`
   );
 
   let next = 1;
 
   if (result.rows.length && result.rows[0].unique_staff_id) {
-    const lastNumber = parseInt(result.rows[0].unique_staff_id.split('-').pop(), 10);
+    const lastNumber = parseInt(result.rows[0].unique_staff_id.replace('VAC', ''), 10);
     if (!isNaN(lastNumber)) next = lastNumber + 1;
   }
 
-  return `${prefix}-${String(next).padStart(3, '0')}`;
+  return 'VAC' + String(next).padStart(3, '0');
 }
 
 router.get('/', auth, async (req, res) => {
@@ -69,7 +58,7 @@ router.post('/', auth, async (req, res) => {
 
     const db = getDb();
     const userRole = role || 'sales';
-    const uniqueStaffId = await generateUniqueStaffId(db, userRole);
+    const uniqueStaffId = await generateUniqueStaffId(db);
     const hash = bcrypt.hashSync(password, 10);
 
     const result = await db.query(

@@ -185,8 +185,25 @@ clientsRouter.put('/:id', auth, async (req, res) => {
 
 clientsRouter.delete('/:id', auth, async (req, res) => {
   try {
-    if (req.user.role === 'sales') return res.status(403).json({ error: 'Sales role cannot delete clients' });
-    await getDb().query('UPDATE clients SET deleted=true WHERE id=$1', [req.params.id]);
+    const db = getDb();
+    let result;
+
+    if (req.user.role === 'sales') {
+      result = await db.query(
+        'UPDATE clients SET deleted=true WHERE id=$1 AND created_by_user_id=$2 RETURNING id',
+        [req.params.id, req.user.id]
+      );
+    } else {
+      result = await db.query(
+        'UPDATE clients SET deleted=true WHERE id=$1 RETURNING id',
+        [req.params.id]
+      );
+    }
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'Client not found or not allowed' });
+    }
+
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -676,8 +693,25 @@ contractsRouter.put('/:id', auth, async (req, res) => {
 
 contractsRouter.delete('/:id', auth, async (req, res) => {
   try {
-    if (req.user.role === 'sales') return res.status(403).json({ error: 'Sales role cannot delete contracts' });
-    await getDb().query('UPDATE contracts SET deleted=true WHERE id=$1', [req.params.id]);
+    const db = getDb();
+    let result;
+
+    if (req.user.role === 'sales') {
+      result = await db.query(
+        'UPDATE contracts SET deleted=true WHERE id=$1 AND sales_person_id=$2 RETURNING id',
+        [req.params.id, req.user.id]
+      );
+    } else {
+      result = await db.query(
+        'UPDATE contracts SET deleted=true WHERE id=$1 RETURNING id',
+        [req.params.id]
+      );
+    }
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'Contract not found or not allowed' });
+    }
+
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });

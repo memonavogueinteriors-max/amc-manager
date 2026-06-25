@@ -4,34 +4,23 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('../db/database');
 const { SECRET } = require('../middleware/auth');
 
-function getStaffPrefix(role = '') {
-  const r = role.toLowerCase();
-  if (r === 'sales') return 'VAC-SALES';
-  if (r === 'manager') return 'VAC-MGR';
-  if (r === 'owner' || r === 'admin') return 'VAC-OWN';
-  return 'VAC-USER';
-}
-
-async function generateUniqueStaffId(db, role = 'sales') {
-  const prefix = getStaffPrefix(role);
-
+async function generateUniqueStaffId(db) {
   const result = await db.query(
     `SELECT unique_staff_id
      FROM users
-     WHERE unique_staff_id LIKE $1
-     ORDER BY unique_staff_id DESC
-     LIMIT 1`,
-    [`${prefix}-%`]
+     WHERE unique_staff_id LIKE 'VAC%'
+     ORDER BY CAST(REPLACE(unique_staff_id, 'VAC', '') AS INTEGER) DESC
+     LIMIT 1`
   );
 
   let next = 1;
 
   if (result.rows.length && result.rows[0].unique_staff_id) {
-    const lastNumber = parseInt(result.rows[0].unique_staff_id.split('-').pop(), 10);
+    const lastNumber = parseInt(result.rows[0].unique_staff_id.replace('VAC', ''), 10);
     if (!isNaN(lastNumber)) next = lastNumber + 1;
   }
 
-  return `${prefix}-${String(next).padStart(3, '0')}`;
+  return 'VAC' + String(next).padStart(3, '0');
 }
 
 router.post('/login', async (req, res) => {
@@ -49,7 +38,7 @@ router.post('/login', async (req, res) => {
     }
 
     if (!user.unique_staff_id) {
-      const uniqueStaffId = await generateUniqueStaffId(db, user.role || 'sales');
+      const uniqueStaffId = await generateUniqueStaffId(db);
       const updated = await db.query(
         'UPDATE users SET unique_staff_id=$1 WHERE id=$2 RETURNING *',
         [uniqueStaffId, user.id]
@@ -88,7 +77,7 @@ router.post('/register', async (req, res) => {
     const db = getDb();
     const hash = bcrypt.hashSync(password, 10);
     const userRole = role || 'sales';
-    const uniqueStaffId = await generateUniqueStaffId(db, userRole);
+    const uniqueStaffId = await generateUniqueStaffId(db);
 
     const result = await db.query(
       `INSERT INTO users (name,email,password,role,unique_staff_id)
