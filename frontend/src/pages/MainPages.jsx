@@ -57,6 +57,8 @@ export function Dashboard() {
     </div>
   );
 
+  const currentUser = JSON.parse(localStorage.getItem('amc_user') || '{}');
+  const isOwner = currentUser.role === 'owner' || currentUser.role === 'admin';
   const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
   const totalRevenue = stats.monthlyRevenue * 12;
   const profit = totalRevenue - totalExpenses;
@@ -77,16 +79,20 @@ export function Dashboard() {
             <div className="metric-sub">of {stats.contracts} total</div>
             {stats.expiringContracts > 0 && <div className="badge badge-warning" style={{ marginTop: 6 }}>⚠ {stats.expiringContracts} expiring</div>}
           </div>
+          {isOwner && (
           <div className="metric-card">
             <div className="metric-label">Monthly Revenue</div>
             <div className="metric-val">AED {Math.round(stats.monthlyRevenue).toLocaleString()}</div>
             <div className="metric-sub">From active contracts</div>
           </div>
+          )}
+          {isOwner && (
           <div className="metric-card">
             <div className="metric-label">Total Expenses</div>
             <div className="metric-val">AED {Math.round(totalExpenses).toLocaleString()}</div>
             <div className="metric-sub">All recorded expenses</div>
           </div>
+          )}
           <div className="metric-card">
             <div className="metric-label">Estimated Profit</div>
             <div className="metric-val" style={{ color: profit >= 0 ? 'var(--green)' : 'var(--red)' }}>
@@ -108,61 +114,64 @@ export function Dashboard() {
             <div className="metric-label" style={{ color: '#185FA5' }}>Platinum Packages</div>
             <div className="metric-val" style={{ color: '#0C447C' }}>{stats.platinumContracts || 0}</div>
           </div>
-        </div>        <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <div className="card-header">
-            <div>
-              <div className="card-title">Sales Performance & Commission</div>
-              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
-                Owner view: clients, contracts, sales value, staff ID and commission due by sales person.
-              </div>
-            </div>
-          </div>
-
-          <div style={{ overflowX: 'auto' }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Sales Person</th>
-                  <th>Staff ID</th>
-                  <th>Role</th>
-                  <th>Clients</th>
-                  <th>Contracts</th>
-                  <th>Total Sales</th>
-                  <th>Commission</th>
-                  <th>Due</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(salesStats || []).map((s) => (
-                  <tr key={s.id}>
-                    <td style={{ fontWeight: 600 }}>{s.name}</td>
-                    <td>{s.unique_staff_id || '-'}</td>
-                    <td>{s.role}</td>
-                    <td>{s.clients_count || 0}</td>
-                    <td>{s.contracts_count || 0}</td>
-                    <td>AED {Math.round(Number(s.total_value || 0)).toLocaleString()}</td>
-                    <td>
-                      {s.commission_type === 'fixed'
-                        ? `AED ${Number(s.commission_value || 0).toLocaleString()} fixed`
-                        : `${Number(s.commission_value || 0)}%`}
-                    </td>
-                    <td style={{ fontWeight: 700 }}>
-                      AED {Math.round(Number(s.commission_due || 0)).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-                {(!salesStats || salesStats.length === 0) && (
-                  <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-3)' }}>
-                      No sales data found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
 
+        {isOwner && (
+          <div className="card" style={{ marginBottom: '1.5rem' }}>
+            <div className="card-header">
+              <div>
+                <div className="card-title">Sales Performance & Commission</div>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
+                  Owner view only: clients, contracts, sales value, staff ID and commission due by sales person.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Sales Person</th>
+                    <th>Staff ID</th>
+                    <th>Role</th>
+                    <th>Clients</th>
+                    <th>Contracts</th>
+                    <th>Total Sales</th>
+                    <th>Commission</th>
+                    <th>Due</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(salesStats || []).map((s) => (
+                    <tr key={s.id}>
+                      <td style={{ fontWeight: 600 }}>{s.name}</td>
+                      <td>{s.unique_staff_id || '-'}</td>
+                      <td>{s.role}</td>
+                      <td>{s.clients_count || 0}</td>
+                      <td>{s.contracts_count || 0}</td>
+                      <td>AED {Math.round(Number(s.total_value || 0)).toLocaleString()}</td>
+                      <td>
+                        {s.commission_type === 'fixed'
+                          ? 'AED ' + Number(s.commission_value || 0).toLocaleString() + ' fixed'
+                          : Number(s.commission_value || 0) + '%'}
+                      </td>
+                      <td style={{ fontWeight: 700 }}>
+                        AED {Math.round(Number(s.commission_due || 0)).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                  {(!salesStats || salesStats.length === 0) && (
+                    <tr>
+                      <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-3)' }}>
+                        No sales data found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
         <div className="row2">
           <div className="card">
             <div className="card-header"><div className="card-title">Open Tickets</div></div>
@@ -727,4 +736,3 @@ export function Clients() {
     </div>
   );
 }
-
