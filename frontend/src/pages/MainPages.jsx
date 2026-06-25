@@ -64,12 +64,17 @@ export function Dashboard() {
   const profit = totalRevenue - totalExpenses;
 
   const updateCommission = async (salesUser, field, value) => {
-    const updatedUser = { ...salesUser, [field]: value };
-    await fetch(`${API}/users/${salesUser.id}`, {
+    const payload = {
+      commission_type: field === 'commission_type' ? value : (salesUser.commission_type || 'percentage'),
+      commission_value: field === 'commission_value' ? value : (salesUser.commission_value || 0)
+    };
+
+    await fetch(`${API}/users/commission/${salesUser.id}`, {
       method: 'PUT',
       headers: authHeaders(),
-      body: JSON.stringify(updatedUser)
+      body: JSON.stringify(payload)
     });
+
     const freshStats = await apiFetch('/users/sales-stats');
     setSalesStats(freshStats);
   };
@@ -175,8 +180,8 @@ export function Dashboard() {
                           <input
                             className="form-input"
                             type="number"
-                            value={s.commission_value || 0}
-                            onChange={(e) => updateCommission(s, 'commission_value', e.target.value)}
+                            defaultValue={s.commission_value || 0}
+                            onBlur={(e) => updateCommission(s, 'commission_value', e.target.value)}
                             style={{ width: 90, padding: 6 }}
                           />
                         </div>

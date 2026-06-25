@@ -99,6 +99,34 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
+
+router.put('/commission/:id', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'owner' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Owner only' });
+    }
+
+    const { commission_type, commission_value } = req.body;
+
+    const result = await getDb().query(
+      'UPDATE users SET commission_type=$1, commission_value=$2 WHERE id=$3 RETURNING id, name, role, unique_staff_id, commission_type, commission_value',
+      [
+        commission_type || 'percentage',
+        parseFloat(commission_value || 0),
+        req.params.id
+      ]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.put('/:id', auth, async (req, res) => {
   try {
     const { name, email, role, phone, sales_target, active, commission_type, commission_value } = req.body;
