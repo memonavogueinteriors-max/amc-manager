@@ -3,10 +3,55 @@ const { getDb } = require('../db/database');
 const { auth } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
 
+function getStaffPrefix(role = '') {
+  const r = role.toLowerCase();
+  if (r === 'sales') return 'VAC-SALES';
+  if (r === 'manager') return 'VAC-MGR';
+  if (r === 'owner' || r === 'admin') return 'VAC-OWN';
+  return 'VAC-USER';
+}
+
+async function generateUniqueStaffId(db, role = 'sales') {
+  const prefix = getStaffPrefix(role);
+
+  const result = await db.query(
+    `SELECT unique_staff_id
+     FROM users
+     WHERE unique_staff_id LIKE $1
+     ORDER BY unique_staff_id DESC
+     LIMIT 1`,
+    [`${prefix}-%`]
+  );
+
+  let next = 1;
+
+  if (result.rows.length && result.rows[0].unique_staff_id) {
+    const lastNumber = parseInt(result.rows[0].unique_staff_id.split('-').pop(), 10);
+    if (!isNaN(lastNumber)) next = lastNumber + 1;
+  }
+
+  return `${prefix}-${String(next).padStart(3, '0')}`;
+}
+
 router.get('/', auth, async (req, res) => {
   try {
     const result = await getDb().query(
-      'SELECT id, name, email, role, phone, sales_target, active, created_at FROM users ORDER BY name'
+      `SELECT
+        id,
+        name,
+        email,
+        role,
+        phone,
+        sales_target,
+        active,
+        unique_staff_id,
+        commission_type,
+        commission_value,
+        google_calendar_connected,
+        google_calendar_email,
+        created_at
+       FROM users
+       ORDER BY name`
     );
     res.json(result.rows);
   } catch (e) {
@@ -16,39 +61,71 @@ router.get('/', auth, async (req, res) => {
 
 router.post('/', auth, async (req, res) => {
   try {
-    const { name, email, password, role, phone, sales_target, active } = req.body;
+    const { name, email, password, role, phone, sales_target, active, commission_type, commission_value } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email and password required' });
     }
 
+    const db = getDb();
+    const userRole = role || 'sales';
+    const uniqueStaffId = await generateUniqueStaffId(db, userRole);
     const hash = bcrypt.hashSync(password, 10);
 
-    const result = await getDb().query(
-      'INSERT INTO users (name, email, password, role, phone, sales_target, active) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
+    const result = await db.query(
+      `INSERT INTO users (
+        name,
+        email,
+        password,
+        role,
+        phone,
+        sales_target,
+        active,
+        unique_staff_id,
+        commission_type,
+        commission_value
+      )
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      RETURNING id, unique_staff_id`,
       [
         name,
         email,
         hash,
-        role || 'sales',
+        userRole,
         phone || '',
         sales_target || 0,
-        active !== false
+        active !== false,
+        uniqueStaffId,
+        commission_type || 'percentage',
+        parseFloat(commission_value || 0)
       ]
     );
 
-    res.json({ id: result.rows[0].id });
+    res.json({
+      id: result.rows[0].id,
+      unique_staff_id: result.rows[0].unique_staff_id
+    });
   } catch (e) {
-    res.status(400).json({ error: 'Email already exists' });
+    res.status(400).json({ error: e.message || 'Email already exists' });
   }
 });
 
 router.put('/:id', auth, async (req, res) => {
   try {
-    const { name, email, role, phone, sales_target, active } = req.body;
+    const { name, email, role, phone, sales_target, active, commission_type, commission_value } = req.body;
 
     const result = await getDb().query(
-      'UPDATE users SET name=$1, email=$2, role=$3, phone=$4, sales_target=$5, active=$6 WHERE id=$7 RETURNING id',
+      `UPDATE users SET
+        name=$1,
+        email=$2,
+        role=$3,
+        phone=$4,
+        sales_target=$5,
+        active=$6,
+        commission_type=$7,
+        commission_value=$8
+       WHERE id=$9
+       RETURNING id`,
       [
         name,
         email,
@@ -56,6 +133,8 @@ router.put('/:id', auth, async (req, res) => {
         phone || '',
         sales_target || 0,
         active !== false,
+        commission_type || 'percentage',
+        parseFloat(commission_value || 0),
         req.params.id
       ]
     );
@@ -159,7 +238,7 @@ router.delete('/:id', auth, async (req, res) => {
 router.get('/commissions', auth, async (req, res) => {
   try {
     const result = await getDb().query(`
-      SELECT c.*, u.name as user_name, ct.contract_number, ct.monthly_value
+      SELECT c.*, u.name as user_name, u.unique_staff_id, ct.contract_number, ct.monthly_value
       FROM commissions c
       LEFT JOIN users u ON c.user_id = u.id
       LEFT JOIN contracts ct ON c.contract_id = ct.id
@@ -204,15 +283,28 @@ router.put('/commissions/:id', auth, async (req, res) => {
 router.get('/sales-stats', auth, async (req, res) => {
   try {
     const result = await getDb().query(`
-      SELECT u.id, u.name, u.role, u.sales_target,
-        COUNT(c.id) as contracts_count,
+      SELECT
+        u.id,
+        u.name,
+        u.role,
+        u.unique_staff_id,
+        u.sales_target,
+        u.commission_type,
+        u.commission_value,
+        COUNT(DISTINCT cl.id) as clients_count,
+        COUNT(DISTINCT c.id) as contracts_count,
         COALESCE(SUM(c.monthly_value), 0) as total_value,
-        COALESCE(SUM(cm.amount), 0) as total_commission
+        CASE
+          WHEN u.commission_type = 'fixed' THEN COUNT(DISTINCT c.id) * COALESCE(u.commission_value, 0)
+          ELSE COALESCE(SUM(c.monthly_value), 0) * COALESCE(u.commission_value, 0) / 100
+        END as commission_due,
+        COALESCE(SUM(cm.amount), 0) as paid_commission
       FROM users u
+      LEFT JOIN clients cl ON cl.created_by_user_id = u.id AND cl.deleted=false
       LEFT JOIN contracts c ON c.sales_person_id = u.id AND c.deleted=false
       LEFT JOIN commissions cm ON cm.user_id = u.id AND cm.status = 'paid'
       WHERE u.role IN ('sales', 'manager') AND u.active = true
-      GROUP BY u.id, u.name, u.role, u.sales_target
+      GROUP BY u.id, u.name, u.role, u.unique_staff_id, u.sales_target, u.commission_type, u.commission_value
       ORDER BY total_value DESC NULLS LAST
     `);
     res.json(result.rows);

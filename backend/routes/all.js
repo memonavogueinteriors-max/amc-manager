@@ -5,19 +5,36 @@ const { auth } = require('../middleware/auth');
 // ── CLIENTS ───────────────────────────────────────────────
 const clientsRouter = express.Router();
 
-clientsRouter.get('/', auth, async (req, res) => { // ROLE_FILTER
+clientsRouter.get('/', auth, async (req, res) => {
   try {
-    const result = await getDb().query(`
+    const db = getDb();
+
+    let sql = `
       SELECT
         cl.*,
+        u.name AS created_by_user_name,
+        u.unique_staff_id AS created_by_unique_staff_id,
         COUNT(c.id) as contract_count,
         COALESCE(SUM(c.monthly_value), 0) as total_monthly
       FROM clients cl
+      LEFT JOIN users u ON cl.created_by_user_id = u.id
       LEFT JOIN contracts c ON cl.id = c.client_id AND c.deleted=false
       WHERE cl.deleted=false
-      GROUP BY cl.id
-      ORDER BY cl.name
-    `);
+    `;
+
+    const params = [];
+
+    if (req.user.role === 'sales') {
+      params.push(req.user.id);
+      sql += ` AND cl.created_by_user_id = $${params.length}`;
+    }
+
+    sql += `
+      GROUP BY cl.id, u.name, u.unique_staff_id
+      ORDER BY cl.created_at DESC
+    `;
+
+    const result = await db.query(sql, params);
     res.json(result.rows);
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
@@ -30,16 +47,42 @@ clientsRouter.post('/', auth, async (req, res) => {
 
     const db = getDb();
 
+    let staffId = req.user.unique_staff_id;
+
+    if (!staffId) {
+      const userResult = await db.query('SELECT unique_staff_id FROM users WHERE id=$1', [req.user.id]);
+      staffId = userResult.rows[0]?.unique_staff_id || null;
+    }
+
     const clientResult = await db.query(
-      `INSERT INTO clients (name, phone, email, address, notes)
-       VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-      [name, phone || '', email || '', address || '', '']
+      `INSERT INTO clients (
+        name,
+        phone,
+        email,
+        address,
+        notes,
+        created_by_user_id,
+        created_by_staff_id,
+        created_by_name,
+        created_by_role
+      )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       RETURNING id`,
+      [
+        name,
+        phone || '',
+        email || '',
+        address || '',
+        '',
+        req.user.id,
+        staffId,
+        req.user.name,
+        req.user.role
+      ]
     );
 
     const client_id = clientResult.rows[0].id;
 
-    // Create a simple placeholder property record so the contract can be created immediately.
-    // Owner can later manage full villa details from Villas page if needed.
     const villaResult = await db.query(
       `INSERT INTO villas (villa_number, block, client_id, notes)
        VALUES ($1,$2,$3,$4) RETURNING id`,
@@ -69,14 +112,47 @@ clientsRouter.post('/', auth, async (req, res) => {
 
     await db.query(
       `INSERT INTO contracts (
-        contract_number, file_number, villa_id, client_id, package,
-        monthly_value, annual_value, start_date, end_date, property_type,
-        visits_total, emergency_callouts_total, next_service_date, status, notes
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+        contract_number,
+        file_number,
+        villa_id,
+        client_id,
+        package,
+        monthly_value,
+        annual_value,
+        start_date,
+        end_date,
+        property_type,
+        sales_person_id,
+        created_by_user_id,
+        created_by_staff_id,
+        created_by_name,
+        created_by_role,
+        visits_total,
+        emergency_callouts_total,
+        next_service_date,
+        status,
+        notes
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
       [
-        contract_number, file_number, villa_id, client_id, defaultPackage,
-        425, 5100, start_date, end_date, 'Villa',
-        3, 1, next_service_date, 'pending',
+        contract_number,
+        file_number,
+        villa_id,
+        client_id,
+        defaultPackage,
+        425,
+        5100,
+        start_date,
+        end_date,
+        'Villa',
+        req.user.role === 'sales' ? req.user.id : null,
+        req.user.id,
+        staffId,
+        req.user.name,
+        req.user.role,
+        3,
+        1,
+        next_service_date,
+        'pending',
         'Auto-created when client was added. Complete package/date/status in Contracts table.'
       ]
     );
@@ -89,12 +165,19 @@ clientsRouter.put('/:id', auth, async (req, res) => {
   try {
     const { name, phone, email, address } = req.body;
 
-    await getDb().query(
-      `UPDATE clients
-       SET name=$1, phone=$2, email=$3, address=$4
-       WHERE id=$5`,
-      [name, phone || '', email || '', address || '', req.params.id]
-    );
+    const params = [name, phone || '', email || '', address || '', req.params.id];
+    let sql = `
+      UPDATE clients
+      SET name=$1, phone=$2, email=$3, address=$4
+      WHERE id=$5
+    `;
+
+    if (req.user.role === 'sales') {
+      params.push(req.user.id);
+      sql += ` AND created_by_user_id=$${params.length}`;
+    }
+
+    await getDb().query(sql, params);
 
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -121,7 +204,6 @@ clientsRouter.put('/recycle/:id', auth, async (req, res) => {
     res.json({ success: true });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
-
 // ── VILLAS ────────────────────────────────────────────────
 const villasRouter = express.Router();
 
@@ -686,3 +768,4 @@ contractsRouter.put('/recycle/:id', auth, async (req, res) => {
 });
 
 module.exports = { clientsRouter, villasRouter, ticketsRouter, scheduleRouter, procurementRouter, dashboardRouter, contractsRouter };
+
