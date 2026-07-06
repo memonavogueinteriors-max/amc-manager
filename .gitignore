@@ -1,0 +1,13 @@
+node_modules/
+dist/
+amc-software/
+vac-updated/
+all-js-copy.txt
+
+backend/fix-*.js
+backend/reset-*.js
+backend/migrate-*.js
+backend/routes/*.backup-*.js
+
+frontend/fix-*.js
+frontend/src/pages/*.backup-*.jsx
