@@ -148,6 +148,12 @@ router.post('/', auth, async (req, res) => {
       relationship_manager_id,
       sales_person_id,
       commission_amount,
+      original_price,
+      discount_amount,
+      final_price,
+      discount_reason,
+      discount_approved_by,
+      discount_approved_date,
       notes
     } = req.body;
 
@@ -161,6 +167,12 @@ router.post('/', auth, async (req, res) => {
     const visits_total = 3;
     const emergency_callouts_total = tier === 'Platinum' ? 3 : tier === 'Gold' ? 2 : 1;
     const next_service_date = calcNextServiceDate(start_date);
+
+    const originalPriceValue = parseFloat(original_price || 0);
+    const discountAmountValue = parseFloat(discount_amount || 0);
+    const finalPriceValue = parseFloat(
+      final_price || Math.max(originalPriceValue - discountAmountValue, 0)
+    );
 
     const result = await db.query(
       `
@@ -181,9 +193,15 @@ router.post('/', auth, async (req, res) => {
         visits_total,
         emergency_callouts_total,
         next_service_date,
+        original_price,
+        discount_amount,
+        final_price,
+        discount_reason,
+        discount_approved_by,
+        discount_approved_date,
         notes
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
       RETURNING *
       `,
       [
@@ -203,6 +221,12 @@ router.post('/', auth, async (req, res) => {
         visits_total,
         emergency_callouts_total,
         next_service_date,
+        originalPriceValue,
+        discountAmountValue,
+        finalPriceValue,
+        discount_reason || '',
+        discount_approved_by || '',
+        discount_approved_date || null,
         notes || ''
       ]
     );
@@ -230,6 +254,10 @@ router.post('/', auth, async (req, res) => {
 
 router.put('/:id', auth, async (req, res) => {
   try {
+    if (req.user.role === 'sales') {
+      return res.status(403).json({ error: 'Sales users can view AMC details only. Manager access required to edit contracts.' });
+    }
+
     const {
       package: pkg,
       monthly_value,
@@ -241,8 +269,20 @@ router.put('/:id', auth, async (req, res) => {
       property_type,
       commission_amount,
       next_service_date,
+      original_price,
+      discount_amount,
+      final_price,
+      discount_reason,
+      discount_approved_by,
+      discount_approved_date,
       notes
     } = req.body;
+
+    const originalPriceValue = parseFloat(original_price || 0);
+    const discountAmountValue = parseFloat(discount_amount || 0);
+    const finalPriceValue = parseFloat(
+      final_price || Math.max(originalPriceValue - discountAmountValue, 0)
+    );
 
     const result = await getDb().query(
       `
@@ -257,8 +297,14 @@ router.put('/:id', auth, async (req, res) => {
         property_type = $8,
         sales_person_id = $9,
         commission_amount = $10,
-        next_service_date = $11
-      WHERE id = $12 AND deleted = false
+        next_service_date = $11,
+        original_price = $12,
+        discount_amount = $13,
+        final_price = $14,
+        discount_reason = $15,
+        discount_approved_by = $16,
+        discount_approved_date = $17
+      WHERE id = $18 AND deleted = false
       RETURNING *
       `,
       [
@@ -273,6 +319,12 @@ router.put('/:id', auth, async (req, res) => {
         sales_person_id ? parseInt(sales_person_id) : null,
         parseFloat(commission_amount || 0),
         next_service_date || calcNextServiceDate(start_date),
+        originalPriceValue,
+        discountAmountValue,
+        finalPriceValue,
+        discount_reason || '',
+        discount_approved_by || '',
+        discount_approved_date || null,
         req.params.id
       ]
     );
@@ -289,7 +341,9 @@ router.put('/:id', auth, async (req, res) => {
 
 router.put('/recycle/:id', auth, async (req, res) => {
   try {
-    await getDb().query('UPDATE contracts SET deleted=false WHERE id=$1', [req.params.id]);
+    if (req.user.role === 'sales') {
+      return res.status(403).json({ error: 'Sales users cannot restore contracts.' });
+    }    await getDb().query('UPDATE contracts SET deleted=false WHERE id=$1', [req.params.id]);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -298,6 +352,9 @@ router.put('/recycle/:id', auth, async (req, res) => {
 
 router.delete('/:id', auth, async (req, res) => {
   try {
+    if (req.user.role === 'sales') {
+      return res.status(403).json({ error: 'Sales users cannot delete contracts.' });
+    }
     await getDb().query('UPDATE contracts SET deleted=true WHERE id=$1', [req.params.id]);
     res.json({ success: true });
   } catch (e) {

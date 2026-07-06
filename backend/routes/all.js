@@ -756,6 +756,10 @@ contractsRouter.get('/:id', auth, async (req, res) => {
 });
 contractsRouter.post('/:id/emergency-callout', auth, async (req, res) => {
   try {
+    if (req.user.role === 'sales') {
+      return res.status(403).json({ error: 'Sales users cannot log emergency call-outs. Manager access required.' });
+    }
+
     const contractId = req.params.id;
 
     const current = await getDb().query(

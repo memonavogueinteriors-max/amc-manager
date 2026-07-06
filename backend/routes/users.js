@@ -102,9 +102,9 @@ router.post('/', auth, async (req, res) => {
 
 router.put('/commission/:id', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'owner' && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Owner only' });
-    }
+    if (!['owner', 'admin', 'manager'].includes(req.user.role)) {
+  return res.status(403).json({ error: 'Manager access required' });
+}
 
     const { commission_type, commission_value } = req.body;
 
@@ -299,6 +299,8 @@ router.put('/commissions/:id', auth, async (req, res) => {
 
 router.get('/sales-stats', auth, async (req, res) => {
   try {
+    const isSales = req.user.role === 'sales';
+
     const result = await getDb().query(`
       SELECT
         u.id,
@@ -306,28 +308,88 @@ router.get('/sales-stats', auth, async (req, res) => {
         u.role,
         u.unique_staff_id,
         u.sales_target,
-        u.commission_type,
-        u.commission_value,
+
+        'package_fixed' as commission_type,
+        0 as commission_value,
+
         COUNT(DISTINCT cl.id) as clients_count,
         COUNT(DISTINCT c.id) as contracts_count,
+
         COALESCE(SUM(c.monthly_value), 0) as total_value,
-        CASE
-          WHEN u.commission_type = 'fixed' THEN COUNT(DISTINCT c.id) * COALESCE(u.commission_value, 0)
-          ELSE COALESCE(SUM(c.monthly_value), 0) * COALESCE(u.commission_value, 0) / 100
-        END as commission_due,
-        COALESCE(SUM(cm.amount), 0) as paid_commission
+
+        COALESCE(SUM(
+          CASE
+            WHEN c.package ILIKE '%silver%' THEN 500
+            WHEN c.package ILIKE '%gold%' THEN 700
+            WHEN c.package ILIKE '%platinum%' THEN 1100
+            ELSE 0
+          END
+        ), 0) as commission_due,
+
+        COALESCE(SUM(cm.amount), 0) as paid_commission,
+
+        (
+          COALESCE(SUM(
+            CASE
+              WHEN c.package ILIKE '%silver%' THEN 500
+              WHEN c.package ILIKE '%gold%' THEN 700
+              WHEN c.package ILIKE '%platinum%' THEN 1100
+              ELSE 0
+            END
+          ), 0) - COALESCE(SUM(cm.amount), 0)
+        ) as pending_commission,
+
+        COALESCE(SUM(
+          CASE
+            WHEN c.package ILIKE '%silver%' THEN 1
+            ELSE 0
+          END
+        ), 0) as silver_sold,
+
+        COALESCE(SUM(
+          CASE
+            WHEN c.package ILIKE '%gold%' THEN 1
+            ELSE 0
+          END
+        ), 0) as gold_sold,
+
+        COALESCE(SUM(
+          CASE
+            WHEN c.package ILIKE '%platinum%' THEN 1
+            ELSE 0
+          END
+        ), 0) as platinum_sold
+
       FROM users u
-      LEFT JOIN clients cl ON cl.created_by_user_id = u.id AND cl.deleted=false
-      LEFT JOIN contracts c ON c.sales_person_id = u.id AND c.deleted=false
-      LEFT JOIN commissions cm ON cm.user_id = u.id AND cm.status = 'paid'
-      WHERE u.role IN ('sales', 'manager') AND u.active = true
-      GROUP BY u.id, u.name, u.role, u.unique_staff_id, u.sales_target, u.commission_type, u.commission_value
+      LEFT JOIN clients cl 
+        ON cl.created_by_user_id = u.id 
+        AND cl.deleted = false
+
+      LEFT JOIN contracts c 
+        ON c.sales_person_id = u.id 
+        AND c.deleted = false
+
+      LEFT JOIN commissions cm 
+        ON cm.user_id = u.id 
+        AND cm.status = 'paid'
+
+      WHERE u.role IN ('sales', 'manager')
+        AND u.active = true
+        AND ($1::boolean = false OR u.id = $2)
+
+      GROUP BY 
+        u.id,
+        u.name,
+        u.role,
+        u.unique_staff_id,
+        u.sales_target
+
       ORDER BY total_value DESC NULLS LAST
-    `);
+    `, [isSales, req.user.id]);
+
     res.json(result.rows);
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
 });
-
 module.exports = router;

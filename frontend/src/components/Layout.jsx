@@ -27,13 +27,33 @@ export default function Layout() {
     navigate('/login');
   };
 
-  const visibleItems = navItems.filter(item => {
-    const path = item.to.replace('/', '');
-    if (user.role === 'owner') return true;
-    if (user.role === 'manager') return path !== 'commissions';
-    if (user.role === 'sales') return !['users', 'commissions'].includes(path);
-    return true;
-  });
+ const visibleItems = navItems.filter(item => {
+  const path = item.to.replace('/', '');
+
+  // Owner/Admin can see everything
+  if (user.role === 'owner' || user.role === 'admin') return true;
+
+  // Manager can see Procurement and Expenses, but not separate Commissions page
+  // because commission is already inside Sales Dashboard
+  if (user.role === 'manager') {
+    return path !== 'commissions';
+  }
+
+  // Sales can see only their allowed working pages
+  // Sales cannot see Users, Commissions, Procurement, Expenses, Reports, Recycle Bin
+  if (user.role === 'sales') {
+    return ![
+      'users',
+      'commissions',
+      'procurement',
+      'expenses',
+      'reports',
+      'recycle'
+    ].includes(path);
+  }
+
+  return true;
+});
 
   return (
     <div className="app">

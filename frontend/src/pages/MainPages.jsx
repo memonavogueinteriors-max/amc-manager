@@ -27,196 +27,286 @@ export function Dashboard() {
     apiFetch('/dashboard').then(setStats).catch(console.error);
     apiFetch('/packages/expenses').then(setExpenses).catch(console.error);
     apiFetch('/users/sales-stats').then(setSalesStats).catch(console.error);
-    if ('Notification' in window) Notification.requestPermission();
-    let lastCount = 0;
-    const checkNewTickets = async () => {
-      try {
-        const data = await apiFetch('/packages/tickets-submitted');
-        const newCount = data.filter(t => t.status === 'submitted').length;
-        if (newCount > lastCount && lastCount !== 0 && Notification.permission === 'granted') {
-          new Notification('New Client Ticket!', { body: 'A client has raised a new service ticket.', icon: '/logo.png' });
-        }
-        lastCount = newCount;
-      } catch(e) {}
-    };
-    checkNewTickets();
-    const interval = setInterval(checkNewTickets, 90000);
-    return () => clearInterval(interval);
   }, []);
 
-  if (!stats) return (
-    <div className="content">
-      <div className="metrics-grid">
-        {[1,2,3,4].map(i => (
-          <div key={i} className="metric-card" style={{ opacity: 0.5 }}>
-            <div style={{ height: 12, width: '60%', background: 'var(--border)', borderRadius: 4, marginBottom: 10 }}></div>
-            <div style={{ height: 24, width: '40%', background: 'var(--border)', borderRadius: 4 }}></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  if (!stats) {
+    return <div className="loading">Loading dashboard...</div>;
+  }
 
   const currentUser = JSON.parse(localStorage.getItem('amc_user') || '{}');
+
   const isOwner = currentUser.role === 'owner' || currentUser.role === 'admin';
+  const isManager = currentUser.role === 'manager';
+  const isSales = currentUser.role === 'sales';
+
   const totalExpenses = expenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
-  const totalRevenue = stats.monthlyRevenue * 12;
+  const totalRevenue = Number(stats.monthlyRevenue || 0) * 12;
   const profit = totalRevenue - totalExpenses;
 
-  const updateCommission = async (salesUser, field, value) => {
-    const payload = {
-      commission_type: field === 'commission_type' ? value : (salesUser.commission_type || 'percentage'),
-      commission_value: field === 'commission_value' ? value : (salesUser.commission_value || 0)
-    };
-
-    await fetch(`${API}/users/commission/${salesUser.id}`, {
-      method: 'PUT',
-      headers: authHeaders(),
-      body: JSON.stringify(payload)
-    });
-
-    const freshStats = await apiFetch('/users/sales-stats');
-    setSalesStats(freshStats);
-  };
+  const mySalesRow = salesStats && salesStats.length > 0 ? salesStats[0] : null;
 
   return (
     <div>
       <div className="topbar">
-        <div className="topbar-title">Overview Dashboard</div>
+        <div className="topbar-title">
+          {isSales ? 'My Sales Dashboard' : 'Overview Dashboard'}
+        </div>
+
         <div className="topbar-right">
-          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{new Date().toDateString()}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+            {new Date().toDateString()}
+          </span>
         </div>
       </div>
+
       <div className="content">
         <div className="metrics-grid">
           <div className="metric-card">
-            <div className="metric-label">Active Contracts</div>
-            <div className="metric-val">{stats.activeContracts}</div>
-            <div className="metric-sub">of {stats.contracts} total</div>
-            {stats.expiringContracts > 0 && <div className="badge badge-warning" style={{ marginTop: 6 }}>⚠ {stats.expiringContracts} expiring</div>}
-          </div>
-          {isOwner && (
-          <div className="metric-card">
-            <div className="metric-label">Monthly Revenue</div>
-            <div className="metric-val">AED {Math.round(stats.monthlyRevenue).toLocaleString()}</div>
-            <div className="metric-sub">From active contracts</div>
-          </div>
-          )}
-          {isOwner && (
-          <div className="metric-card">
-            <div className="metric-label">Total Expenses</div>
-            <div className="metric-val">AED {Math.round(totalExpenses).toLocaleString()}</div>
-            <div className="metric-sub">All recorded expenses</div>
-          </div>
-          )}
-          <div className="metric-card">
-            <div className="metric-label">Estimated Profit</div>
-            <div className="metric-val" style={{ color: profit >= 0 ? 'var(--green)' : 'var(--red)' }}>
-              AED {Math.round(Math.abs(profit)).toLocaleString()}
+            <div className="metric-label">
+              {isSales ? 'My Active Contracts' : 'Active Contracts'}
             </div>
-            <div className="metric-sub">{profit >= 0 ? '✅ Profit' : '❌ Loss'}</div>
+            <div className="metric-val">{stats.activeContracts || 0}</div>
+            <div className="metric-sub">of {stats.contracts || 0} total</div>
           </div>
-        </div>
-        <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: '1.5rem' }}>
-          <div className="metric-card" style={{ background: '#F1EFE8' }}>
-            <div className="metric-label" style={{ color: '#5F5E5A' }}>Silver Packages</div>
-            <div className="metric-val" style={{ color: '#444441' }}>{stats.silverContracts || 0}</div>
-          </div>
-          <div className="metric-card" style={{ background: '#FAEEDA' }}>
-            <div className="metric-label" style={{ color: '#854F0B' }}>Gold Packages</div>
-            <div className="metric-val" style={{ color: '#633806' }}>{stats.goldContracts || 0}</div>
-          </div>
-          <div className="metric-card" style={{ background: '#E6F1FB' }}>
-            <div className="metric-label" style={{ color: '#185FA5' }}>Platinum Packages</div>
-            <div className="metric-val" style={{ color: '#0C447C' }}>{stats.platinumContracts || 0}</div>
-          </div>
-        </div>
 
-        {isOwner && (
-          <div className="card" style={{ marginBottom: '1.5rem' }}>
-            <div className="card-header">
-              <div>
-                <div className="card-title">Sales Performance & Commission</div>
-                <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
-                  Owner view only: clients, contracts, sales value, staff ID and commission due by sales person.
+          {(isOwner || isManager) && (
+            <div className="metric-card">
+              <div className="metric-label">Monthly Revenue</div>
+              <div className="metric-val">
+                AED {Math.round(Number(stats.monthlyRevenue || 0)).toLocaleString()}
+              </div>
+              <div className="metric-sub">From active contracts</div>
+            </div>
+          )}
+
+          {(isOwner || isManager) && (
+            <div className="metric-card">
+              <div className="metric-label">Total Expenses</div>
+              <div className="metric-val">
+                AED {Math.round(totalExpenses).toLocaleString()}
+              </div>
+              <div className="metric-sub">Manager / Owner only</div>
+            </div>
+          )}
+
+          {(isOwner || isManager) && (
+            <div className="metric-card">
+              <div className="metric-label">Estimated Profit</div>
+              <div
+                className="metric-val"
+                style={{ color: profit >= 0 ? 'var(--green)' : 'var(--red)' }}
+              >
+                AED {Math.round(Math.abs(profit)).toLocaleString()}
+              </div>
+              <div className="metric-sub">{profit >= 0 ? 'Profit' : 'Loss'}</div>
+            </div>
+          )}
+
+          {isSales && mySalesRow && (
+            <>
+              <div className="metric-card">
+                <div className="metric-label">My Final Sales</div>
+                <div className="metric-val">
+                  AED {Math.round(Number(mySalesRow.total_value || 0)).toLocaleString()}
+                </div>
+                <div className="metric-sub">
+                  Discount: AED {Math.round(Number(mySalesRow.total_discount || 0)).toLocaleString()}
                 </div>
               </div>
-            </div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Sales Person</th>
-                    <th>Staff ID</th>
-                    <th>Role</th>
-                    <th>Clients</th>
-                    <th>Contracts</th>
-                    <th>Total Sales</th>
-                    <th>Commission</th>
-                    <th>Due</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(salesStats || []).map((s) => (
-                    <tr key={s.id}>
-                      <td style={{ fontWeight: 600 }}>{s.name}</td>
-                      <td>{s.unique_staff_id || '-'}</td>
-                      <td>{s.role}</td>
-                      <td>{s.clients_count || 0}</td>
-                      <td>{s.contracts_count || 0}</td>
-                      <td>AED {Math.round(Number(s.total_value || 0)).toLocaleString()}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                          <select
-                            className="form-input"
-                            value={s.commission_type || 'percentage'}
-                            onChange={(e) => updateCommission(s, 'commission_type', e.target.value)}
-                            style={{ width: 120, padding: 6 }}
-                          >
-                            <option value="percentage">%</option>
-                            <option value="fixed">Fixed AED</option>
-                          </select>
-                          <input
-                            className="form-input"
-                            type="number"
-                            defaultValue={s.commission_value || 0}
-                            onBlur={(e) => updateCommission(s, 'commission_value', e.target.value)}
-                            style={{ width: 90, padding: 6 }}
-                          />
-                        </div>
-                      </td>
-                      <td style={{ fontWeight: 700 }}>
-                        AED {Math.round(Number(s.commission_due || 0)).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                  {(!salesStats || salesStats.length === 0) && (
-                    <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-3)' }}>
-                        No sales data found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              <div className="metric-card">
+                <div className="metric-label">My Commission Due</div>
+                <div className="metric-val">
+                  AED {Math.round(Number(mySalesRow.commission_due || 0)).toLocaleString()}
+                </div>
+                <div className="metric-sub">
+                  Silver 500 · Gold 700 · Platinum 1,100
+                </div>
+              </div>
+
+              <div className="metric-card">
+                <div className="metric-label">My Paid Commission</div>
+                <div className="metric-val">
+                  AED {Math.round(Number(mySalesRow.paid_commission || 0)).toLocaleString()}
+                </div>
+                <div className="metric-sub">
+                  Pending: AED {Math.round(Number(mySalesRow.pending_commission || 0)).toLocaleString()}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div
+          className="metrics-grid"
+          style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: '1.5rem' }}
+        >
+          <div className="metric-card" style={{ background: '#F1EFE8' }}>
+            <div className="metric-label" style={{ color: '#5F5E5A' }}>
+              Silver Packages
+            </div>
+            <div className="metric-val" style={{ color: '#444441' }}>
+              {stats.silverContracts || 0}
             </div>
           </div>
-        )}
+
+          <div className="metric-card" style={{ background: '#FAEEDA' }}>
+            <div className="metric-label" style={{ color: '#854F0B' }}>
+              Gold Packages
+            </div>
+            <div className="metric-val" style={{ color: '#633806' }}>
+              {stats.goldContracts || 0}
+            </div>
+          </div>
+
+          <div className="metric-card" style={{ background: '#E6F1FB' }}>
+            <div className="metric-label" style={{ color: '#185FA5' }}>
+              Platinum Packages
+            </div>
+            <div className="metric-val" style={{ color: '#0C447C' }}>
+              {stats.platinumContracts || 0}
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: '1.5rem' }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">
+                {isSales ? 'My Sales Performance & Commission' : 'Sales Performance & Commission'}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>
+                {isSales
+                  ? 'Sales view: only your own final sales, discounts and commission.'
+                  : 'Manager / Owner view: original sales, discounts, final sales and fixed package commission.'}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Sales Person</th>
+                  <th>Staff ID</th>
+                  <th>Role</th>
+                  <th>Clients</th>
+                  <th>Contracts</th>
+                  <th>Original Sales</th>
+                  <th>Discount</th>
+                  <th>Final Sales</th>
+                  <th>Commission Rule</th>
+                  <th>Due</th>
+                  <th>Paid</th>
+                  <th>Pending</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {(salesStats || []).map((s) => (
+                  <tr key={s.id}>
+                    <td style={{ fontWeight: 600 }}>{s.name}</td>
+                    <td>{s.unique_staff_id || '-'}</td>
+                    <td>{s.role}</td>
+                    <td>{s.clients_count || 0}</td>
+                    <td>{s.contracts_count || 0}</td>
+
+                    <td>
+                      AED {Math.round(Number(s.original_sales || s.total_value || 0)).toLocaleString()}
+                    </td>
+
+                    <td
+                      style={{
+                        color: Number(s.total_discount || 0) > 0 ? 'var(--red)' : 'var(--text-3)',
+                        fontWeight: 600
+                      }}
+                    >
+                      AED {Math.round(Number(s.total_discount || 0)).toLocaleString()}
+                    </td>
+
+                    <td style={{ fontWeight: 700 }}>
+                      AED {Math.round(Number(s.total_value || 0)).toLocaleString()}
+                    </td>
+
+                    <td style={{ fontSize: 12, lineHeight: 1.6 }}>
+                      Silver: AED 500<br />
+                      Gold: AED 700<br />
+                      Platinum: AED 1,100
+                    </td>
+
+                    <td style={{ fontWeight: 700 }}>
+                      AED {Math.round(Number(s.commission_due || 0)).toLocaleString()}
+                    </td>
+
+                    <td style={{ fontWeight: 700, color: 'var(--green)' }}>
+                      AED {Math.round(Number(s.paid_commission || 0)).toLocaleString()}
+                    </td>
+
+                    <td style={{ fontWeight: 700, color: 'var(--red)' }}>
+                      AED {Math.round(Number(s.pending_commission || 0)).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+
+                {(!salesStats || salesStats.length === 0) && (
+                  <tr>
+                    <td colSpan="12" style={{ textAlign: 'center', color: 'var(--text-3)' }}>
+                      No sales data found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <div className="row2">
           <div className="card">
-            <div className="card-header"><div className="card-title">Open Tickets</div></div>
-            <div style={{ fontSize: 36, fontWeight: 600, color: stats.urgentTickets > 0 ? 'var(--red)' : 'var(--green)' }}>{stats.openTickets}</div>
-            {stats.urgentTickets > 0 && <div className="badge badge-danger" style={{ marginTop: 8 }}>🔴 {stats.urgentTickets} urgent</div>}
+            <div className="card-header">
+              <div className="card-title">Open Tickets</div>
+            </div>
+
+            <div
+              style={{
+                fontSize: 36,
+                fontWeight: 600,
+                color: stats.urgentTickets > 0 ? 'var(--red)' : 'var(--green)'
+              }}
+            >
+              {stats.openTickets || 0}
+            </div>
+
+            {stats.urgentTickets > 0 && (
+              <div className="badge badge-danger" style={{ marginTop: 8 }}>
+                {stats.urgentTickets} urgent
+              </div>
+            )}
           </div>
+
           <div className="card">
-            <div className="card-header"><div className="card-title">Recent Activity</div></div>
+            <div className="card-header">
+              <div className="card-title">Recent Activity</div>
+            </div>
+
             {(stats.recentActivity || []).slice(0, 5).map((a, i) => (
-              <div key={i} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: i < 4 ? '0.5px solid var(--border)' : 'none' }}>
-                <span>{a.type === 'ticket' ? '🎫' : a.type === 'order' ? '📦' : '📄'}</span>
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  padding: '8px 0',
+                  borderBottom: i < 4 ? '0.5px solid var(--border)' : 'none'
+                }}
+              >
+                <span>
+                  {a.type === 'ticket' ? 'Ticket' : a.type === 'order' ? 'Order' : 'Contract'}
+                </span>
+
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{a.label}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{a.type} · {new Date(a.created_at).toLocaleDateString()}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                    {a.type} · {new Date(a.created_at).toLocaleDateString()}
+                  </div>
                 </div>
               </div>
             ))}
@@ -226,7 +316,6 @@ export function Dashboard() {
     </div>
   );
 }
-
 export function Contracts() {
   const navigate = useNavigate();
   const [contracts, setContracts] = useState([]);
@@ -234,16 +323,33 @@ export function Contracts() {
   const [filter, setFilter] = useState('all');
 
   const pkgPrices = {
-    'Silver - 3 AC': 425, 'Gold - 3 AC': 546, 'Platinum - 3 AC': 712,
-    'Silver - 4 AC': 479, 'Gold - 4 AC': 617, 'Platinum - 4 AC': 812,
-    'Silver - 6 AC': 588, 'Gold - 6 AC': 758, 'Platinum - 6 AC': 1017
-  };
+  'Silver - 4 AC': 479,
+  'Gold - 4 AC': 617,
+  'Platinum - 4 AC': 812,
 
-  const pkgAnnual = {
-    'Silver - 3 AC': 5100, 'Gold - 3 AC': 6550, 'Platinum - 3 AC': 8550,
-    'Silver - 4 AC': 5750, 'Gold - 4 AC': 7400, 'Platinum - 4 AC': 9750,
-    'Silver - 6 AC': 7050, 'Gold - 6 AC': 9100, 'Platinum - 6 AC': 12200
-  };
+  'Silver - 6 AC': 588,
+  'Gold - 6 AC': 758,
+  'Platinum - 6 AC': 1017,
+
+  'Silver - 8 AC': 696,
+  'Gold - 8 AC': 904,
+  'Platinum - 8 AC': 1217
+};
+
+const pkgAnnual = {
+  'Silver - 4 AC': 5750,
+  'Gold - 4 AC': 7400,
+  'Platinum - 4 AC': 9750,
+
+  'Silver - 6 AC': 7050,
+  'Gold - 6 AC': 9100,
+  'Platinum - 6 AC': 12200,
+
+  'Silver - 8 AC': 8350,
+  'Gold - 8 AC': 10850,
+  'Platinum - 8 AC': 14600
+};
+
 
   const packageOptions = Object.keys(pkgPrices);
 
@@ -269,8 +375,8 @@ export function Contracts() {
     const next = { ...contract, ...changes };
 
     if (changes.package) {
-      next.monthly_value = pkgPrices[changes.package] || 425;
-      next.annual_value = pkgAnnual[changes.package] || ((pkgPrices[changes.package] || 425) * 12);
+      next.monthly_value = pkgPrices[changes.package] || 479;
+next.annual_value = pkgAnnual[changes.package] || ((pkgPrices[changes.package] || 479) * 12);
     }
 
     if (changes.start_date) {
@@ -283,9 +389,9 @@ export function Contracts() {
 
     try {
       const body = {
-        package: next.package || 'Silver - 3 AC',
-        monthly_value: parseFloat(next.monthly_value || 425),
-        annual_value: parseFloat(next.annual_value || pkgAnnual[next.package] || 5100),
+        package: next.package || 'Silver - 4 AC',
+monthly_value: parseFloat(next.monthly_value || 479),
+annual_value: parseFloat(next.annual_value || pkgAnnual[next.package] || 5750),
         start_date: next.start_date || '',
         end_date: next.end_date || '',
         next_service_date: next.next_service_date || '',
@@ -333,7 +439,7 @@ export function Contracts() {
     doc.setTextColor(...darkGold); doc.setFontSize(16); doc.setFont('helvetica', 'bold');
     doc.text('ANNUAL MAINTENANCE CONTRACT', 105, 68, { align: 'center' });
     doc.setDrawColor(...gold); doc.setLineWidth(0.8); doc.line(20, 72, 190, 72);
-    const pkg = c.package || 'Silver - 3 AC';
+    const pkg = c.package || 'Silver - 4 AC';
     const tier = pkg.split(' - ')[0];
     const pkgColors = { Silver: [150,150,150], Gold: [186,148,62], Platinum: [100,149,237] };
     const pkgColor = pkgColors[tier] || gold;
@@ -343,13 +449,30 @@ export function Contracts() {
     doc.setTextColor(...dark); doc.setFontSize(11); doc.setFont('helvetica', 'bold');
     doc.text('CONTRACT DETAILS', 20, 102);
     doc.setDrawColor(...gold); doc.setLineWidth(0.3); doc.line(20, 105, 190, 105);
+        const originalPrice = Number(c.original_price || c.annual_value || pkgAnnual[c.package] || c.monthly_value * 12 || 0);
+    const discountAmount = Number(c.discount_amount || 0);
+    const finalPrice = Number(c.final_price || Math.max(originalPrice - discountAmount, 0));
+
     const details = [
-      ['Contract Number', c.contract_number], ['File Number', c.file_number || '—'],
-      ['Client Name', c.client_name], ['Address', c.client_address || '—'],
-      ['Property Type', c.property_type || 'Villa'], ['Package', c.package],
-      ['Annual Value', `AED ${(c.annual_value || pkgAnnual[c.package] || c.monthly_value * 12 || 0)?.toLocaleString()}`],
-      ['Monthly Value', `AED ${Number(c.monthly_value || 0)?.toLocaleString()}`],
-      ['Start Date', c.start_date], ['End Date', c.end_date], ['Status', c.status?.toUpperCase()],
+      ['Contract Number', c.contract_number],
+      ['File Number', c.file_number || '—'],
+      ['Client Name', c.client_name],
+      ['Address', c.client_address || '—'],
+      ['Property Type', c.property_type || 'Villa'],
+      ['Package', c.package],
+
+      ['Original Price', `AED ${originalPrice.toLocaleString()}`],
+      ['Discount Amount', `AED ${discountAmount.toLocaleString()}`],
+      ['Final Approved Price', `AED ${finalPrice.toLocaleString()}`],
+      ['Monthly Value', `AED ${Number(c.monthly_value || 0).toLocaleString()}`],
+
+      ['Discount Reason', c.discount_reason || '—'],
+      ['Approved By', c.discount_approved_by || '—'],
+      ['Approved Date', c.discount_approved_date ? String(c.discount_approved_date).split('T')[0] : '—'],
+
+      ['Start Date', c.start_date],
+      ['End Date', c.end_date],
+      ['Status', c.status?.toUpperCase()]
     ];
     let y = 115;
     details.forEach(([label, value], i) => {
@@ -446,7 +569,7 @@ export function Contracts() {
                         </td>
                         <td>
                           <select
-                            value={c.package || 'Silver - 3 AC'}
+                            value={c.package || 'Silver - 4 AC'}
                             onChange={e => updateContractRow(c, { package: e.target.value })}
                             style={{ minWidth: 145, padding: '5px 8px', borderRadius: 6, border: '0.5px solid var(--border-md)', background: c.package?.includes('Platinum') ? '#E6F1FB' : c.package?.includes('Gold') ? '#FAEEDA' : '#F1EFE8', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
                           >
@@ -763,3 +886,4 @@ export function Clients() {
     </div>
   );
 }
+
