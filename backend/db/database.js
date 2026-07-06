@@ -192,7 +192,75 @@ async function initDb() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS packages (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      tier TEXT,
+      villa_size TEXT,
+      annual_price REAL,
+      monthly_price REAL,
+      ac_units INTEGER,
+      services JSONB,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 
+  await pool.query(`
+    DELETE FROM packages
+    WHERE ac_units = 3
+       OR name ILIKE '%3 AC%'
+       OR villa_size ILIKE '%3-Bedroom%';
+  `);
+
+  const vacPackages = [
+    ['Silver — 4 AC Units', 'Silver', '4-Bedroom Villa', 5750, 479, 4],
+    ['Gold — 4 AC Units', 'Gold', '4-Bedroom Villa', 7400, 617, 4],
+    ['Platinum — 4 AC Units', 'Platinum', '4-Bedroom Villa', 9750, 812, 4],
+
+    ['Silver — 6 AC Units', 'Silver', '5-6 Bedroom Large Villa', 7050, 588, 6],
+    ['Gold — 6 AC Units', 'Gold', '5-6 Bedroom Large Villa', 9100, 758, 6],
+    ['Platinum — 6 AC Units', 'Platinum', '5-6 Bedroom Large Villa', 12200, 1017, 6],
+
+    ['Silver — 8 AC Units', 'Silver', '7-8 Bedroom Luxury Villa', 8350, 696, 8],
+    ['Gold — 8 AC Units', 'Gold', '7-8 Bedroom Luxury Villa', 10850, 904, 8],
+    ['Platinum — 8 AC Units', 'Platinum', '7-8 Bedroom Luxury Villa', 14600, 1217, 8]
+  ];
+
+  for (const p of vacPackages) {
+    const services = {
+      ac_visits: 3,
+      emergency_ac: p[1] === 'Silver' ? 1 : p[1] === 'Gold' ? 2 : 3,
+      emergency_plumbing: p[1] === 'Silver' ? 1 : p[1] === 'Gold' ? 2 : 3,
+      emergency_electrical: p[1] === 'Silver' ? 1 : p[1] === 'Gold' ? 2 : 3,
+      response_time: p[1] === 'Silver' ? '4 hours' : p[1] === 'Gold' ? '3 hours' : '2 hours',
+      duct_cleaning: `1x / ${p[5]} zones`,
+      robotech: p[1] === 'Silver' ? 'Not included' : p[1] === 'Gold' ? '1x partial' : '1x full all zones',
+      plumbing: p[1] === 'Silver' ? 'Basic / visit' : 'Full / visit',
+      electrical: p[1] === 'Silver' ? 'Not included' : 'Full / visit',
+      parts_discount: p[1] === 'Silver' ? 0 : p[1] === 'Gold' ? 10 : 15,
+      priority: p[1] === 'Silver' ? 'Standard queue' : p[1] === 'Gold' ? 'Priority queue' : 'VIP — first slot',
+      account_manager: p[1] === 'Platinum',
+      asset_report: p[1] === 'Platinum',
+      visit_months: ['April', 'July', 'October']
+    };
+
+    await pool.query(`
+      INSERT INTO packages (name, tier, villa_size, annual_price, monthly_price, ac_units, services)
+      SELECT $1, $2, $3, $4, $5, $6, $7::jsonb
+      WHERE NOT EXISTS (
+        SELECT 1 FROM packages WHERE name = $1
+      );
+    `, [
+      p[0],
+      p[1],
+      p[2],
+      p[3],
+      p[4],
+      p[5],
+      JSON.stringify(services)
+    ]);
+  }
   const result = await pool.query('SELECT COUNT(*) as c FROM users');
 
   if (parseInt(result.rows[0].c) === 0) {
