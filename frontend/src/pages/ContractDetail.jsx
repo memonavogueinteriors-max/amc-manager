@@ -397,14 +397,24 @@ export default function ContractDetail() {
     const drawCheckbox = (x, y, checked = false) => {
       doc.setDrawColor(...border);
       doc.setLineWidth(0.35);
-      doc.rect(x, y - 5, 4, 4);
+      doc.rect(x, y, 4.5, 4.5);
 
       if (checked) {
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
+        doc.setFontSize(7);
         doc.setTextColor(...dark);
-        doc.text('✓', x + 0.6, y - 1.5);
+        doc.text('✓', x + 0.7, y + 3.5);
       }
+    };
+
+    const emptyCell = (x, y, w, h, bg = null) => {
+      if (bg) {
+        doc.setFillColor(...bg);
+        doc.rect(x, y, w, h, 'F');
+      }
+      doc.setDrawColor(...border);
+      doc.setLineWidth(0.2);
+      doc.rect(x, y, w, h);
     };
 
     doc.setFillColor(...lightBg);
@@ -509,13 +519,13 @@ export default function ContractDetail() {
 
         cell(index === 0 ? category : '', 15, y, 38, 9);
         cell(item, 53, y, 82, 9);
-        cell('', 135, y, 20, 9);
-        cell('', 155, y, 20, 9);
-        cell('', 175, y, 20, 9);
+        emptyCell(135, y, 20, 9);
+        emptyCell(155, y, 20, 9);
+        emptyCell(175, y, 20, 9);
 
-        drawCheckbox(143, y, done);
-        drawCheckbox(163, y, false);
-        drawCheckbox(183, y, !done);
+        drawCheckbox(142.8, y + 2.2, done);
+        drawCheckbox(162.8, y + 2.2, false);
+        drawCheckbox(182.8, y + 2.2, !done);
 
         y += 9;
       });

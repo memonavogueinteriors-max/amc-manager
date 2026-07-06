@@ -73,247 +73,376 @@ export default function ServiceReports() {
   };
 
   const generateReportPDF = (report) => {
-  const doc = new jsPDF();
-  const gold = [186, 148, 62];
-  const darkGold = [139, 101, 20];
-  const white = [255, 255, 255];
-  const dark = [30, 30, 30];
-  const gray = [115, 115, 115];
-  const lightBg = [250, 248, 240];
-  const line = [220, 205, 170];
+    const doc = new jsPDF();
 
-  const safe = (v) => String(v || '—');
-  const cleanDate = (v) => v ? String(v).split('T')[0] : '—';
+    const gold = [186, 148, 62];
+    const darkGold = [139, 101, 20];
+    const white = [255, 255, 255];
+    const dark = [30, 30, 30];
+    const gray = [90, 90, 90];
+    const lightBg = [250, 248, 240];
+    const tableHead = [245, 240, 225];
+    const border = [215, 200, 165];
 
-  const addFooter = () => {
-    doc.setFillColor(...gold);
-    doc.rect(0, 282, 210, 15, 'F');
-    doc.setTextColor(...white);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(
-      'VOGUE AIR CARE · +971 50 127 5342 · Dubai Villa Specialist · 24-Hr Workmanship Guarantee',
-      105,
-      291,
-      { align: 'center' }
-    );
-  };
+    const safe = (v) => String(v || '-');
+    const cleanDate = (v) => v ? String(v).split('T')[0] : '-';
 
-  const sectionTitle = (title, y) => {
-    doc.setTextColor(...darkGold);
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text(title, 20, y);
-    doc.setDrawColor(...gold);
-    doc.setLineWidth(0.4);
-    doc.line(20, y + 3, 190, y + 3);
-    return y + 12;
-  };
+    const getTierFromPackage = (pkg) => {
+      const text = String(pkg || '').toLowerCase();
+      if (text.includes('platinum')) return 'Platinum';
+      if (text.includes('gold')) return 'Gold';
+      return 'Silver';
+    };
 
-  const checkPage = (y, needed = 25) => {
-    if (y + needed > 275) {
+    const templates = {
+      Silver: {
+        'AC Services': [
+          'AC Indoor Unit Full Service',
+          'AC Outdoor Unit Full Service',
+          'Filter Clean & Replace',
+          'Condenser Coil Clean',
+          'Drain Line Flush & Clear',
+          'AC Thermostat & Controls Check',
+          'Refrigerant Level Check',
+          'Chemical Coil Deep Clean (1x/year)'
+        ],
+        Duct: ['Duct Chemical Cleaning (1x/year)'],
+        Plumbing: ['Basic Plumbing Health Check', 'Drain Assessment'],
+        General: ['Service Completion Report', '24-Hr Workmanship Guarantee Check']
+      },
+      Gold: {
+        'AC Services': [
+          'AC Indoor Unit Full Service',
+          'AC Outdoor Unit Full Service',
+          'Filter Clean & Replace',
+          'Condenser Coil Clean',
+          'Drain Line Flush & Clear',
+          'AC Thermostat & Controls Check',
+          'Refrigerant Level Check',
+          'Chemical Coil Deep Clean (1x/year)'
+        ],
+        Duct: ['Duct Chemical Cleaning (1x/year)', 'RoboTech Duct Video Inspection (1x partial)'],
+        Plumbing: ['Full Plumbing Health Check', 'Pipe & Joint Inspection', 'Water Pressure Check', 'Drain Assessment'],
+        Electrical: ['Full Electrical Health Check', 'Distribution Board Inspection', 'Socket & Switch Check'],
+        General: ['Service Completion Report', 'Priority Scheduling Confirmed', '24-Hr Workmanship Guarantee Check']
+      },
+      Platinum: {
+        'AC Services': [
+          'AC Indoor Unit Full Service',
+          'AC Outdoor Unit Full Service',
+          'Filter Clean & Replace',
+          'Condenser Coil Clean',
+          'Drain Line Flush & Clear',
+          'AC Thermostat & Controls Check',
+          'Refrigerant Level Check',
+          'Chemical Coil Deep Clean (1x/year)'
+        ],
+        Duct: ['Full Duct Chemical Cleaning', 'RoboTech Full Duct Video Inspection (all zones)', 'RoboTech Full Duct Clean'],
+        Plumbing: ['Full Plumbing Health Check', 'Pipe & Joint Inspection', 'Water Pressure Check', 'Drain Assessment'],
+        Electrical: ['Full Electrical Health Check', 'Distribution Board Inspection', 'Socket & Switch Check'],
+        General: [
+          'Service Completion Report',
+          'VIP Scheduling Confirmed',
+          'Dedicated Account Manager Review',
+          'Annual Asset Health Report',
+          '24-Hr Workmanship Guarantee Check'
+        ]
+      }
+    };
+
+    const tier = getTierFromPackage(report.package);
+    const template = templates[tier] || templates.Silver;
+    const checklist = report.checklist || {};
+
+    const addFooter = () => {
+      doc.setFillColor(...gold);
+      doc.rect(0, 284, 210, 13, 'F');
+
+      doc.setTextColor(...white);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.text(
+        'VOGUE AIR CARE | +971 50 127 5342 | Dubai Villa Specialist | 24-Hr Workmanship Guarantee',
+        105,
+        292,
+        { align: 'center' }
+      );
+    };
+
+    const newPage = () => {
       addFooter();
       doc.addPage();
       doc.setFillColor(...lightBg);
       doc.rect(0, 0, 210, 297, 'F');
-      return 20;
-    }
-    return y;
-  };
+      return 18;
+    };
 
-  doc.setFillColor(...lightBg);
-  doc.rect(0, 0, 210, 297, 'F');
+    const checkPage = (y, needed = 25) => {
+      if (y + needed > 278) return newPage();
+      return y;
+    };
 
-  doc.setFillColor(...gold);
-  doc.rect(0, 0, 210, 42, 'F');
+    const sectionTitle = (letter, title, y) => {
+      y = checkPage(y, 18);
 
-  try {
-    doc.addImage('/logo.png', 'PNG', 12, 6, 30, 30);
-  } catch (e) {}
-
-  doc.setTextColor(...white);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.text('VOGUE AIR CARE', 48, 16);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text('AC · Duct Cleaning · Electrical · Plumbing · Dubai Villa Specialist', 48, 24);
-  doc.text('+971 50 127 5342', 48, 32);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('SERVICE COMPLETION REPORT', 150, 18, { align: 'center' });
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 150, 29, { align: 'center' });
-
-  let y = 55;
-
-  y = sectionTitle('1. CLIENT & VISIT DETAILS', y);
-
-  const details = [
-    ['Client Name', report.client_name],
-    ['Villa / Unit', `${safe(report.villa_number)}, Block ${safe(report.block)}`],
-    ['Contract Number', report.contract_number],
-    ['Package', report.package],
-    ['Visit Type', report.visit_type],
-    ['Visit Date', cleanDate(report.visit_date)]
-  ];
-
-  details.forEach(([label, value], i) => {
-    if (i % 2 === 0) {
-      doc.setFillColor(245, 240, 225);
-      doc.rect(20, y - 5, 170, 9, 'F');
-    }
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...gray);
-    doc.text(`${label}:`, 25, y);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...dark);
-    doc.text(safe(value), 78, y);
-
-    y += 10;
-  });
-
-  y += 4;
-  y = sectionTitle('2. TEAM ON SITE', y);
-
-  const team = [
-    ['Technician', report.technician],
-    ['Manager / Supervisor', report.manager],
-    ['Manager Approved', report.manager_approved ? 'Yes' : 'Pending']
-  ];
-
-  team.forEach(([label, value]) => {
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...gray);
-    doc.text(`${label}:`, 25, y);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...dark);
-    doc.text(safe(value), 78, y);
-
-    y += 10;
-  });
-
-  y += 4;
-  y = sectionTitle('3. SERVICES COMPLETED', y);
-
-  doc.setFillColor(245, 240, 225);
-  doc.rect(20, y - 6, 170, 10, 'F');
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...dark);
-  doc.text('Service Item', 25, y);
-  doc.text('Status', 158, y);
-
-  y += 9;
-
-  const checklist = report.checklist || {};
-  const entries = Object.entries(checklist);
-
-  if (entries.length === 0) {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...gray);
-    doc.text('No checklist items recorded.', 25, y);
-    y += 10;
-  } else {
-    entries.forEach(([item, done]) => {
-      y = checkPage(y, 12);
-
-      doc.setDrawColor(...line);
-      doc.line(20, y + 2, 190, y + 2);
-
-      doc.setFontSize(8.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...dark);
-      doc.text(doc.splitTextToSize(item, 125), 25, y);
-
+      doc.setTextColor(...darkGold);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(done ? 45 : 165, done ? 120 : 120, done ? 45 : 120);
-      doc.text(done ? 'Done' : 'Pending', 158, y);
+      doc.setFontSize(11);
+      doc.text(letter + ' — ' + title, 15, y);
 
+      doc.setDrawColor(...gold);
+      doc.setLineWidth(0.4);
+      doc.line(15, y + 3, 195, y + 3);
+
+      return y + 10;
+    };
+
+    const cell = (text, x, y, w, h, bold = false, bg = null) => {
+      if (bg) {
+        doc.setFillColor(...bg);
+        doc.rect(x, y, w, h, 'F');
+      }
+
+      doc.setDrawColor(...border);
+      doc.setLineWidth(0.2);
+      doc.rect(x, y, w, h);
+
+      doc.setTextColor(...dark);
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      doc.setFontSize(7.6);
+
+      const lines = doc.splitTextToSize(safe(text), w - 4);
+      doc.text(lines, x + 2, y + 5);
+    };
+
+    const emptyCell = (x, y, w, h, bg = null) => {
+      if (bg) {
+        doc.setFillColor(...bg);
+        doc.rect(x, y, w, h, 'F');
+      }
+      doc.setDrawColor(...border);
+      doc.setLineWidth(0.2);
+      doc.rect(x, y, w, h);
+    };
+
+    const drawCheckbox = (x, y, checked = false) => {
+      doc.setDrawColor(...border);
+      doc.setLineWidth(0.35);
+      doc.rect(x, y, 4.5, 4.5);
+
+      if (checked) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7);
+        doc.setTextColor(...dark);
+        doc.text('✓', x + 0.7, y + 3.5);
+      }
+    };
+
+    const drawServiceHeader = (y) => {
+      cell('Service Category', 15, y, 38, 9, true, tableHead);
+      cell('Service Item', 53, y, 82, 9, true, tableHead);
+      cell('Done', 135, y, 20, 9, true, tableHead);
+      cell('N/A', 155, y, 20, 9, true, tableHead);
+      cell('Pending', 175, y, 20, 9, true, tableHead);
+      return y + 9;
+    };
+
+    doc.setFillColor(...lightBg);
+    doc.rect(0, 0, 210, 297, 'F');
+
+    doc.setFillColor(...gold);
+    doc.rect(0, 0, 210, 38, 'F');
+
+    try {
+      doc.addImage('/logo.png', 'PNG', 12, 5, 28, 28);
+    } catch (e) {}
+
+    doc.setTextColor(...white);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(17);
+    doc.text('VOGUE AIR CARE', 45, 14);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text('AC | Duct Cleaning | Electrical | Plumbing | Dubai Villa Specialist', 45, 22);
+    doc.text('+971 50 127 5342', 45, 30);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('SERVICE COMPLETION REPORT', 150, 15, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.text('Generated: ' + new Date().toLocaleDateString(), 150, 26, { align: 'center' });
+
+    let y = 48;
+
+    y = sectionTitle('A', 'CLIENT & VISIT DETAILS', y);
+
+    cell('Job Reference', 15, y, 35, 9, true, tableHead);
+    cell(report.contract_number, 50, y, 45, 9);
+    cell('Date', 95, y, 25, 9, true, tableHead);
+    cell(cleanDate(report.visit_date), 120, y, 30, 9);
+    cell('Visit Type', 150, y, 25, 9, true, tableHead);
+    cell(report.visit_type, 175, y, 20, 9);
+    y += 9;
+
+    cell('Client Name', 15, y, 35, 9, true, tableHead);
+    cell(report.client_name, 50, y, 45, 9);
+    cell('Contact Number', 95, y, 35, 9, true, tableHead);
+    cell(report.client_phone, 130, y, 65, 9);
+    y += 9;
+
+    cell('Villa / Unit', 15, y, 35, 9, true, tableHead);
+    cell(safe(report.villa_number) + ', Block ' + safe(report.block), 50, y, 45, 9);
+    cell('Community / Area', 95, y, 35, 9, true, tableHead);
+    cell(report.address || report.villa_address || '-', 130, y, 65, 9);
+    y += 9;
+
+    cell('AMC Plan', 15, y, 35, 9, true, tableHead);
+    cell(report.package, 50, y, 45, 9);
+    cell('Visit No.', 95, y, 35, 9, true, tableHead);
+    cell(report.visit_type, 130, y, 25, 9);
+    cell('Emergency Calls Used', 155, y, 25, 9, true, tableHead);
+    cell('-', 180, y, 15, 9);
+    y += 14;
+
+    y = sectionTitle('B', 'TEAM ON SITE', y);
+
+    cell('Role', 15, y, 55, 9, true, tableHead);
+    cell('Name', 70, y, 65, 9, true, tableHead);
+    cell('Time In', 135, y, 30, 9, true, tableHead);
+    cell('Time Out', 165, y, 30, 9, true, tableHead);
+    y += 9;
+
+    const teamRows = [
+      ['Driver', '', '', ''],
+      ['Lead AC Technician', report.technician || '', '', ''],
+      ['AC Technician 2', '', '', ''],
+      ['Helper', '', '', ''],
+      ['Manager / Supervisor', report.manager || '', '', '']
+    ];
+
+    teamRows.forEach((row) => {
+      cell(row[0], 15, y, 55, 9);
+      cell(row[1], 70, y, 65, 9);
+      cell(row[2], 135, y, 30, 9);
+      cell(row[3], 165, y, 30, 9);
       y += 9;
     });
-  }
 
-  y += 5;
-  y = checkPage(y, 45);
-  y = sectionTitle('4. PHOTO DOCUMENTATION', y);
+    y += 5;
+    y = sectionTitle('C', 'SERVICES COMPLETED', y);
+    y = drawServiceHeader(y);
 
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...dark);
-  doc.text('Before Photos:', 25, y);
-  doc.rect(58, y - 5, 55, 18);
-  doc.text('After Photos:', 122, y);
-  doc.rect(152, y - 5, 38, 18);
-  y += 25;
+    Object.entries(template).forEach(([category, items]) => {
+      items.forEach((item, index) => {
+        if (y + 9 > 278) {
+          y = newPage();
+          y = sectionTitle('C', 'SERVICES COMPLETED CONTINUED', y);
+          y = drawServiceHeader(y);
+        }
 
-  y = checkPage(y, 35);
-  y = sectionTitle('5. PARTS REPLACED & CONSUMABLES USED', y);
+        const done = !!checklist[item];
 
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...dark);
-  doc.text('Parts / Consumables:', 25, y);
-  doc.line(62, y, 190, y);
-  y += 10;
-  doc.text('Quantity:', 25, y);
-  doc.line(43, y, 95, y);
-  doc.text('Approved By:', 105, y);
-  doc.line(130, y, 190, y);
-  y += 15;
+        cell(index === 0 ? category : '', 15, y, 38, 9);
+        cell(item, 53, y, 82, 9);
+        emptyCell(135, y, 20, 9);
+        emptyCell(155, y, 20, 9);
+        emptyCell(175, y, 20, 9);
 
-  y = checkPage(y, 45);
-  y = sectionTitle('6. FOLLOW-UP WORK & RECOMMENDATIONS', y);
+        drawCheckbox(142.8, y + 2.2, done);
+        drawCheckbox(162.8, y + 2.2, false);
+        drawCheckbox(182.8, y + 2.2, !done);
 
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...dark);
+        y += 9;
+      });
+    });
 
-  const notesText = report.notes
-    ? doc.splitTextToSize(String(report.notes), 160)
-    : ['No additional notes recorded.'];
+    y += 5;
+    y = sectionTitle('D', 'PHOTO DOCUMENTATION', y);
 
-  doc.text(notesText, 25, y);
-  y += Math.max(18, notesText.length * 6);
+    cell('Photo Type', 15, y, 45, 9, true, tableHead);
+    cell('Description / Link / Notes', 60, y, 135, 9, true, tableHead);
+    y += 9;
 
-  y = checkPage(y, 45);
-  y = sectionTitle('7. CLIENT SATISFACTION & SIGNATURES', y);
+    cell('Before Photos', 15, y, 45, 14);
+    cell('', 60, y, 135, 14);
+    y += 14;
 
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(...dark);
-  doc.text('Client Satisfaction:', 25, y);
-  doc.rect(62, y - 5, 8, 8);
-  doc.text('Satisfied', 73, y);
-  doc.rect(100, y - 5, 8, 8);
-  doc.text('Needs Follow-up', 111, y);
-  y += 25;
+    cell('After Photos', 15, y, 45, 14);
+    cell('', 60, y, 135, 14);
+    y += 19;
 
-  doc.setDrawColor(...gold);
-  doc.setLineWidth(0.5);
-  doc.line(20, y, 85, y);
-  doc.line(125, y, 190, y);
+    y = sectionTitle('E', 'PARTS REPLACED & CONSUMABLES USED', y);
 
-  y += 8;
-  doc.setFontSize(8);
-  doc.setTextColor(...gray);
-  doc.text('Client Signature & Date', 52, y, { align: 'center' });
-  doc.text('Manager / Supervisor Signature', 157, y, { align: 'center' });
+    cell('Item Description', 15, y, 55, 9, true, tableHead);
+    cell('Qty', 70, y, 18, 9, true, tableHead);
+    cell('Unit Cost', 88, y, 25, 9, true, tableHead);
+    cell('Notes / Warranty', 113, y, 42, 9, true, tableHead);
+    cell('Total Cost', 155, y, 22, 9, true, tableHead);
+    cell('Approved', 177, y, 18, 9, true, tableHead);
+    y += 9;
 
-  addFooter();
+    for (let i = 0; i < 3; i++) {
+      cell('', 15, y, 55, 10);
+      cell('', 70, y, 18, 10);
+      cell('', 88, y, 25, 10);
+      cell('', 113, y, 42, 10);
+      cell('', 155, y, 22, 10);
+      cell('', 177, y, 18, 10);
+      y += 10;
+    }
 
-  doc.save(`VAC-Service-Report-${safe(report.contract_number)}-${cleanDate(report.visit_date)}.pdf`);
-};
+    y += 5;
+    y = sectionTitle('F', 'FOLLOW-UP WORK & RECOMMENDATIONS', y);
+
+    const notes = report.notes ? String(report.notes) : 'No additional notes recorded.';
+    cell(notes, 15, y, 180, 30);
+    y += 35;
+
+    y = sectionTitle('G', 'CLIENT SATISFACTION RATING', y);
+
+    cell('Client Satisfaction', 15, y, 50, 10, true, tableHead);
+    cell('Excellent', 65, y, 32, 10);
+    cell('Good', 97, y, 32, 10);
+    cell('Average', 129, y, 32, 10);
+    cell('Needs Follow-up', 161, y, 34, 10);
+
+    drawCheckbox(79, y + 2.7, false);
+    drawCheckbox(111, y + 2.7, false);
+    drawCheckbox(143, y + 2.7, false);
+    drawCheckbox(177, y + 2.7, false);
+
+    y += 17;
+    y = checkPage(y, 40);
+
+    doc.setDrawColor(...gold);
+    doc.setLineWidth(0.5);
+
+    doc.line(15, y, 80, y);
+    doc.line(115, y, 195, y);
+    y += 7;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...gray);
+    doc.text('Client Signature', 47, y, { align: 'center' });
+    doc.text('Lead Technician Signature', 155, y, { align: 'center' });
+
+    y += 14;
+
+    doc.line(15, y, 80, y);
+    doc.line(115, y, 195, y);
+    y += 7;
+
+    doc.text('Client Name / Date & Time', 47, y, { align: 'center' });
+    doc.text('Technician Name / Date & Time', 155, y, { align: 'center' });
+
+    addFooter();
+
+    doc.save('VAC-Service-Completion-Report-' + safe(report.contract_number) + '-' + safe(cleanDate(report.visit_date)) + '.pdf');
+  };
 
   return (
     <div>
