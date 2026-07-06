@@ -571,10 +571,10 @@ export default function ContractDetail() {
     cell('Average', 129, y, 32, 10);
     cell('Needs Follow-up', 161, y, 34, 10);
 
-    drawCheckbox(68, y + 1, false);
-    drawCheckbox(100, y + 1, false);
-    drawCheckbox(132, y + 1, false);
-    drawCheckbox(164, y + 1, false);
+    drawCheckbox(79, y + 2.7, false);
+    drawCheckbox(111, y + 2.7, false);
+    drawCheckbox(143, y + 2.7, false);
+    drawCheckbox(177, y + 2.7, false);
 
     y += 17;
     y = checkPage(y, 40);
