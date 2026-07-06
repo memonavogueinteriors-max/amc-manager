@@ -225,7 +225,7 @@ export default function Users() {
               <tbody>
                 {users.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="empty">No users found</td>
+                    <td colSpan={8} className="empty">No users found</td>
                   </tr>
                 ) : (
                   users.map(u => (
