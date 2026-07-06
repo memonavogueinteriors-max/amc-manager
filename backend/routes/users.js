@@ -302,33 +302,34 @@ router.get('/sales-stats', auth, async (req, res) => {
     const isSales = req.user.role === 'sales';
 
     const result = await getDb().query(`
-      SELECT
-        u.id,
-        u.name,
-        u.role,
-        u.unique_staff_id,
-        u.sales_target,
+      WITH contract_stats AS (
+        SELECT
+          c.sales_person_id,
 
-        'package_fixed' as commission_type,
-        0 as commission_value,
+          COUNT(DISTINCT c.id) as contracts_count,
 
-        COUNT(DISTINCT cl.id) as clients_count,
-        COUNT(DISTINCT c.id) as contracts_count,
+          COALESCE(SUM(
+            COALESCE(
+              NULLIF(c.original_price, 0),
+              NULLIF(c.annual_value, 0),
+              NULLIF(c.monthly_value, 0) * 12,
+              0
+            )
+          ), 0) as original_sales,
 
-        COALESCE(SUM(c.monthly_value), 0) as total_value,
+          COALESCE(SUM(COALESCE(c.discount_amount, 0)), 0) as total_discount,
 
-        COALESCE(SUM(
-          CASE
-            WHEN c.package ILIKE '%silver%' THEN 500
-            WHEN c.package ILIKE '%gold%' THEN 700
-            WHEN c.package ILIKE '%platinum%' THEN 1100
-            ELSE 0
-          END
-        ), 0) as commission_due,
+          COALESCE(SUM(
+            COALESCE(
+              NULLIF(c.final_price, 0),
+              GREATEST(
+                COALESCE(NULLIF(c.original_price, 0), NULLIF(c.annual_value, 0), NULLIF(c.monthly_value, 0) * 12, 0)
+                - COALESCE(c.discount_amount, 0),
+                0
+              )
+            )
+          ), 0) as final_sales,
 
-        COALESCE(SUM(cm.amount), 0) as paid_commission,
-
-        (
           COALESCE(SUM(
             CASE
               WHEN c.package ILIKE '%silver%' THEN 500
@@ -336,53 +337,152 @@ router.get('/sales-stats', auth, async (req, res) => {
               WHEN c.package ILIKE '%platinum%' THEN 1100
               ELSE 0
             END
-          ), 0) - COALESCE(SUM(cm.amount), 0)
-        ) as pending_commission,
+          ), 0) as package_commission,
 
-        COALESCE(SUM(
-          CASE
-            WHEN c.package ILIKE '%silver%' THEN 1
-            ELSE 0
-          END
-        ), 0) as silver_sold,
+          COALESCE(SUM(
+            CASE
+              WHEN c.notes ILIKE '%referral%' THEN 250
+              ELSE 0
+            END
+          ), 0) as referral_bonus,
 
-        COALESCE(SUM(
-          CASE
-            WHEN c.package ILIKE '%gold%' THEN 1
-            ELSE 0
-          END
-        ), 0) as gold_sold,
+          COALESCE(SUM(
+            CASE
+              WHEN c.package ILIKE '%silver%' THEN 1
+              ELSE 0
+            END
+          ), 0) as silver_sold,
 
-        COALESCE(SUM(
-          CASE
-            WHEN c.package ILIKE '%platinum%' THEN 1
-            ELSE 0
-          END
-        ), 0) as platinum_sold
+          COALESCE(SUM(
+            CASE
+              WHEN c.package ILIKE '%gold%' THEN 1
+              ELSE 0
+            END
+          ), 0) as gold_sold,
 
-      FROM users u
-      LEFT JOIN clients cl 
-        ON cl.created_by_user_id = u.id 
-        AND cl.deleted = false
+          COALESCE(SUM(
+            CASE
+              WHEN c.package ILIKE '%platinum%' THEN 1
+              ELSE 0
+            END
+          ), 0) as platinum_sold
 
-      LEFT JOIN contracts c 
-        ON c.sales_person_id = u.id 
-        AND c.deleted = false
+        FROM contracts c
+        WHERE c.deleted = false
+        GROUP BY c.sales_person_id
+      ),
 
-      LEFT JOIN commissions cm 
-        ON cm.user_id = u.id 
-        AND cm.status = 'paid'
+      monthly_stats AS (
+        SELECT
+          c.sales_person_id,
 
-      WHERE u.role IN ('sales', 'manager')
-        AND u.active = true
-        AND ($1::boolean = false OR u.id = $2)
+          COALESCE(SUM(
+            COALESCE(
+              NULLIF(c.final_price, 0),
+              GREATEST(
+                COALESCE(NULLIF(c.original_price, 0), NULLIF(c.annual_value, 0), NULLIF(c.monthly_value, 0) * 12, 0)
+                - COALESCE(c.discount_amount, 0),
+                0
+              )
+            )
+          ), 0) as monthly_final_sales,
 
-      GROUP BY 
+          COUNT(DISTINCT c.id) as monthly_contracts
+
+        FROM contracts c
+        WHERE c.deleted = false
+          AND c.start_date >= date_trunc('month', CURRENT_DATE)
+          AND c.start_date < date_trunc('month', CURRENT_DATE) + interval '1 month'
+        GROUP BY c.sales_person_id
+      ),
+
+      client_stats AS (
+        SELECT
+          cl.created_by_user_id as user_id,
+          COUNT(DISTINCT cl.id) as clients_count
+        FROM clients cl
+        WHERE cl.deleted = false
+        GROUP BY cl.created_by_user_id
+      ),
+
+      paid_stats AS (
+        SELECT
+          cm.user_id,
+          COALESCE(SUM(cm.amount), 0) as paid_commission
+        FROM commissions cm
+        WHERE cm.status = 'paid'
+        GROUP BY cm.user_id
+      )
+
+      SELECT
         u.id,
         u.name,
         u.role,
         u.unique_staff_id,
-        u.sales_target
+        COALESCE(u.sales_target, 0) as sales_target,
+
+        'package_fixed_plus_referral' as commission_type,
+        0 as commission_value,
+
+        COALESCE(cs.clients_count, 0) as clients_count,
+        COALESCE(ct.contracts_count, 0) as contracts_count,
+
+        COALESCE(ct.original_sales, 0) as original_sales,
+        COALESCE(ct.total_discount, 0) as total_discount,
+        COALESCE(ct.final_sales, 0) as total_value,
+
+        COALESCE(ms.monthly_final_sales, 0) as monthly_sales,
+        COALESCE(ms.monthly_contracts, 0) as monthly_contracts,
+
+        CASE
+          WHEN COALESCE(u.sales_target, 0) > 0
+          THEN ROUND((COALESCE(ms.monthly_final_sales, 0) / COALESCE(u.sales_target, 0)) * 100, 1)
+          ELSE 0
+        END as target_progress,
+
+        GREATEST(COALESCE(u.sales_target, 0) - COALESCE(ms.monthly_final_sales, 0), 0) as target_remaining,
+
+        CASE
+          WHEN COALESCE(u.sales_target, 0) > 0
+           AND COALESCE(ms.monthly_final_sales, 0) >= COALESCE(u.sales_target, 0)
+          THEN true
+          ELSE false
+        END as target_achieved,
+
+        COALESCE(ct.package_commission, 0) as package_commission,
+        COALESCE(ct.referral_bonus, 0) as referral_bonus,
+
+        COALESCE(ct.package_commission, 0) + COALESCE(ct.referral_bonus, 0) as commission_due,
+
+        COALESCE(ps.paid_commission, 0) as paid_commission,
+
+        (
+          COALESCE(ct.package_commission, 0)
+          + COALESCE(ct.referral_bonus, 0)
+          - COALESCE(ps.paid_commission, 0)
+        ) as pending_commission,
+
+        COALESCE(ct.silver_sold, 0) as silver_sold,
+        COALESCE(ct.gold_sold, 0) as gold_sold,
+        COALESCE(ct.platinum_sold, 0) as platinum_sold
+
+      FROM users u
+
+      LEFT JOIN client_stats cs
+        ON cs.user_id = u.id
+
+      LEFT JOIN contract_stats ct
+        ON ct.sales_person_id = u.id
+
+      LEFT JOIN monthly_stats ms
+        ON ms.sales_person_id = u.id
+
+      LEFT JOIN paid_stats ps
+        ON ps.user_id = u.id
+
+      WHERE u.role IN ('sales', 'manager')
+        AND u.active = true
+        AND ($1::boolean = false OR u.id = $2)
 
       ORDER BY total_value DESC NULLS LAST
     `, [isSales, req.user.id]);

@@ -195,10 +195,15 @@ export function Dashboard() {
                   <th>Original Sales</th>
                   <th>Discount</th>
                   <th>Final Sales</th>
-                  <th>Commission Rule</th>
-                  <th>Due</th>
-                  <th>Paid</th>
-                  <th>Pending</th>
+                  <th>Monthly Target</th>
+<th>Monthly Sales</th>
+<th>Target Progress</th>
+<th>Commission Rule</th>
+<th>Package Commission</th>
+<th>Referral Bonus</th>
+<th>Due</th>
+<th>Paid</th>
+<th>Pending</th>
                 </tr>
               </thead>
 
@@ -228,11 +233,37 @@ export function Dashboard() {
                       AED {Math.round(Number(s.total_value || 0)).toLocaleString()}
                     </td>
 
-                    <td style={{ fontSize: 12, lineHeight: 1.6 }}>
-                      Silver: AED 500<br />
-                      Gold: AED 700<br />
-                      Platinum: AED 1,100
-                    </td>
+                   <td>
+  AED {Math.round(Number(s.sales_target || 0)).toLocaleString()}
+</td>
+
+<td>
+  AED {Math.round(Number(s.monthly_sales || 0)).toLocaleString()}
+</td>
+
+<td style={{ fontWeight: 700, color: s.target_achieved ? 'var(--green)' : 'var(--red)' }}>
+  {Number(s.target_progress || 0)}%
+  <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-3)' }}>
+    {s.target_achieved
+      ? 'Target achieved'
+      : `Remaining AED ${Math.round(Number(s.target_remaining || 0)).toLocaleString()}`}
+  </div>
+</td>
+
+<td style={{ fontSize: 12, lineHeight: 1.6 }}>
+  Silver: AED 500<br />
+  Gold: AED 700<br />
+  Platinum: AED 1,100<br />
+  Referral: AED 250
+</td>
+
+<td style={{ fontWeight: 700 }}>
+  AED {Math.round(Number(s.package_commission || 0)).toLocaleString()}
+</td>
+
+<td style={{ fontWeight: 700, color: Number(s.referral_bonus || 0) > 0 ? 'var(--green)' : 'var(--text-3)' }}>
+  AED {Math.round(Number(s.referral_bonus || 0)).toLocaleString()}
+</td>
 
                     <td style={{ fontWeight: 700 }}>
                       AED {Math.round(Number(s.commission_due || 0)).toLocaleString()}
@@ -250,7 +281,7 @@ export function Dashboard() {
 
                 {(!salesStats || salesStats.length === 0) && (
                   <tr>
-                    <td colSpan="12" style={{ textAlign: 'center', color: 'var(--text-3)' }}>
+                    <td colSpan="17" style={{ textAlign: 'center', color: 'var(--text-3)' }}>
                       No sales data found.
                     </td>
                   </tr>
@@ -886,4 +917,6 @@ export function Clients() {
     </div>
   );
 }
+
+
 
