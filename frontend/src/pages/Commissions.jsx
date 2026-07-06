@@ -10,9 +10,24 @@ export default function Commissions() {
   const [salesStats, setSalesStats] = useState([]);
   const [tab, setTab] = useState('overview');
 
-  const load = () => {
-    fetch(`${API}/users/commissions`, { headers: authHeaders() }).then(r => r.json()).then(setCommissions).catch(console.error);
-    fetch(`${API}/users/sales-stats`, { headers: authHeaders() }).then(r => r.json()).then(setSalesStats).catch(console.error);
+  const load = async () => {
+    try {
+      const cRes = await fetch(`${API}/users/commissions`, { headers: authHeaders() });
+      const cData = await cRes.json();
+      setCommissions(Array.isArray(cData) ? cData : []);
+    } catch (e) {
+      console.error(e);
+      setCommissions([]);
+    }
+
+    try {
+      const sRes = await fetch(`${API}/users/sales-stats`, { headers: authHeaders() });
+      const sData = await sRes.json();
+      setSalesStats(Array.isArray(sData) ? sData : []);
+    } catch (e) {
+      console.error(e);
+      setSalesStats([]);
+    }
   };
 
   useEffect(() => { load(); }, []);
