@@ -73,94 +73,247 @@ export default function ServiceReports() {
   };
 
   const generateReportPDF = (report) => {
-    const doc = new jsPDF();
-    const gold = [186, 148, 62];
-    const white = [255, 255, 255];
-    const dark = [30, 30, 30];
-    const gray = [120, 120, 120];
+  const doc = new jsPDF();
+  const gold = [186, 148, 62];
+  const darkGold = [139, 101, 20];
+  const white = [255, 255, 255];
+  const dark = [30, 30, 30];
+  const gray = [115, 115, 115];
+  const lightBg = [250, 248, 240];
+  const line = [220, 205, 170];
 
-    doc.setFillColor(...gold);
-    doc.rect(0, 0, 210, 40, 'F');
-    doc.setTextColor(...white);
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('VOGUE AIR CARE', 20, 16);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Service Completion Report', 20, 25);
-    doc.text('+971 50 127 5342', 20, 33);
-    doc.text(new Date().toLocaleDateString(), 160, 25);
+  const safe = (v) => String(v || '—');
+  const cleanDate = (v) => v ? String(v).split('T')[0] : '—';
 
-    doc.setTextColor(...dark);
-    doc.setFontSize(13);
-    doc.setFont('helvetica', 'bold');
-    doc.text('SERVICE DETAILS', 20, 55);
-    doc.setDrawColor(...gold);
-    doc.line(20, 58, 190, 58);
-
-    const details = [
-      ['Villa', `${report.villa_number}, Block ${report.block}`],
-      ['Client', report.client_name],
-      ['Contract', report.contract_number],
-      ['Package', report.package],
-      ['Visit Type', report.visit_type],
-      ['Visit Date', report.visit_date],
-      ['Technician', report.technician],
-      ['Manager', report.manager || '—'],
-    ];
-
-    let y = 68;
-    doc.setFontSize(10);
-    details.forEach(([label, value]) => {
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...gray);
-      doc.text(label + ':', 20, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...dark);
-      doc.text(String(value || '—'), 75, y);
-      y += 9;
-    });
-
-    y += 5;
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...gold[0], ...gold.slice(1));
-    doc.setFontSize(12);
-    doc.setTextColor(186, 148, 62);
-    doc.text('SERVICES CHECKLIST', 20, y);
-    doc.setDrawColor(...gold);
-    doc.line(20, y + 3, 190, y + 3);
-    y += 12;
-
-    const checklist = report.checklist || {};
-    Object.entries(checklist).forEach(([item, done]) => {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      doc.setTextColor(done ? 30 : 150, done ? 109 : 150, done ? 17 : 150);
-      doc.text(done ? '✓' : '○', 22, y);
-      doc.setTextColor(...dark);
-      doc.text(item, 32, y);
-      y += 8;
-      if (y > 270) { doc.addPage(); y = 20; }
-    });
-
-    y += 5;
-    doc.setDrawColor(...gold);
-    doc.line(20, y, 85, y);
-    doc.line(125, y, 190, y);
-    y += 8;
-    doc.setFontSize(9);
-    doc.setTextColor(...gray);
-    doc.text('Client Signature & Date', 52, y, { align: 'center' });
-    doc.text('Manager / Supervisor', 157, y, { align: 'center' });
-
+  const addFooter = () => {
     doc.setFillColor(...gold);
     doc.rect(0, 282, 210, 15, 'F');
     doc.setTextColor(...white);
     doc.setFontSize(8);
-    doc.text('VOGUE AIR CARE · +971 50 127 5342 · Dubai Villa Specialist · 24-Hr Workmanship Guarantee', 105, 291, { align: 'center' });
-
-    doc.save(`VAC-Report-${report.contract_number}-${report.visit_date}.pdf`);
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      'VOGUE AIR CARE · +971 50 127 5342 · Dubai Villa Specialist · 24-Hr Workmanship Guarantee',
+      105,
+      291,
+      { align: 'center' }
+    );
   };
+
+  const sectionTitle = (title, y) => {
+    doc.setTextColor(...darkGold);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(title, 20, y);
+    doc.setDrawColor(...gold);
+    doc.setLineWidth(0.4);
+    doc.line(20, y + 3, 190, y + 3);
+    return y + 12;
+  };
+
+  const checkPage = (y, needed = 25) => {
+    if (y + needed > 275) {
+      addFooter();
+      doc.addPage();
+      doc.setFillColor(...lightBg);
+      doc.rect(0, 0, 210, 297, 'F');
+      return 20;
+    }
+    return y;
+  };
+
+  doc.setFillColor(...lightBg);
+  doc.rect(0, 0, 210, 297, 'F');
+
+  doc.setFillColor(...gold);
+  doc.rect(0, 0, 210, 42, 'F');
+
+  try {
+    doc.addImage('/logo.png', 'PNG', 12, 6, 30, 30);
+  } catch (e) {}
+
+  doc.setTextColor(...white);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text('VOGUE AIR CARE', 48, 16);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('AC · Duct Cleaning · Electrical · Plumbing · Dubai Villa Specialist', 48, 24);
+  doc.text('+971 50 127 5342', 48, 32);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('SERVICE COMPLETION REPORT', 150, 18, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 150, 29, { align: 'center' });
+
+  let y = 55;
+
+  y = sectionTitle('1. CLIENT & VISIT DETAILS', y);
+
+  const details = [
+    ['Client Name', report.client_name],
+    ['Villa / Unit', `${safe(report.villa_number)}, Block ${safe(report.block)}`],
+    ['Contract Number', report.contract_number],
+    ['Package', report.package],
+    ['Visit Type', report.visit_type],
+    ['Visit Date', cleanDate(report.visit_date)]
+  ];
+
+  details.forEach(([label, value], i) => {
+    if (i % 2 === 0) {
+      doc.setFillColor(245, 240, 225);
+      doc.rect(20, y - 5, 170, 9, 'F');
+    }
+
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...gray);
+    doc.text(`${label}:`, 25, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...dark);
+    doc.text(safe(value), 78, y);
+
+    y += 10;
+  });
+
+  y += 4;
+  y = sectionTitle('2. TEAM ON SITE', y);
+
+  const team = [
+    ['Technician', report.technician],
+    ['Manager / Supervisor', report.manager],
+    ['Manager Approved', report.manager_approved ? 'Yes' : 'Pending']
+  ];
+
+  team.forEach(([label, value]) => {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...gray);
+    doc.text(`${label}:`, 25, y);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...dark);
+    doc.text(safe(value), 78, y);
+
+    y += 10;
+  });
+
+  y += 4;
+  y = sectionTitle('3. SERVICES COMPLETED', y);
+
+  doc.setFillColor(245, 240, 225);
+  doc.rect(20, y - 6, 170, 10, 'F');
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...dark);
+  doc.text('Service Item', 25, y);
+  doc.text('Status', 158, y);
+
+  y += 9;
+
+  const checklist = report.checklist || {};
+  const entries = Object.entries(checklist);
+
+  if (entries.length === 0) {
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...gray);
+    doc.text('No checklist items recorded.', 25, y);
+    y += 10;
+  } else {
+    entries.forEach(([item, done]) => {
+      y = checkPage(y, 12);
+
+      doc.setDrawColor(...line);
+      doc.line(20, y + 2, 190, y + 2);
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...dark);
+      doc.text(doc.splitTextToSize(item, 125), 25, y);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(done ? 45 : 165, done ? 120 : 120, done ? 45 : 120);
+      doc.text(done ? 'Done' : 'Pending', 158, y);
+
+      y += 9;
+    });
+  }
+
+  y += 5;
+  y = checkPage(y, 45);
+  y = sectionTitle('4. PHOTO DOCUMENTATION', y);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...dark);
+  doc.text('Before Photos:', 25, y);
+  doc.rect(58, y - 5, 55, 18);
+  doc.text('After Photos:', 122, y);
+  doc.rect(152, y - 5, 38, 18);
+  y += 25;
+
+  y = checkPage(y, 35);
+  y = sectionTitle('5. PARTS REPLACED & CONSUMABLES USED', y);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...dark);
+  doc.text('Parts / Consumables:', 25, y);
+  doc.line(62, y, 190, y);
+  y += 10;
+  doc.text('Quantity:', 25, y);
+  doc.line(43, y, 95, y);
+  doc.text('Approved By:', 105, y);
+  doc.line(130, y, 190, y);
+  y += 15;
+
+  y = checkPage(y, 45);
+  y = sectionTitle('6. FOLLOW-UP WORK & RECOMMENDATIONS', y);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...dark);
+
+  const notesText = report.notes
+    ? doc.splitTextToSize(String(report.notes), 160)
+    : ['No additional notes recorded.'];
+
+  doc.text(notesText, 25, y);
+  y += Math.max(18, notesText.length * 6);
+
+  y = checkPage(y, 45);
+  y = sectionTitle('7. CLIENT SATISFACTION & SIGNATURES', y);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...dark);
+  doc.text('Client Satisfaction:', 25, y);
+  doc.rect(62, y - 5, 8, 8);
+  doc.text('Satisfied', 73, y);
+  doc.rect(100, y - 5, 8, 8);
+  doc.text('Needs Follow-up', 111, y);
+  y += 25;
+
+  doc.setDrawColor(...gold);
+  doc.setLineWidth(0.5);
+  doc.line(20, y, 85, y);
+  doc.line(125, y, 190, y);
+
+  y += 8;
+  doc.setFontSize(8);
+  doc.setTextColor(...gray);
+  doc.text('Client Signature & Date', 52, y, { align: 'center' });
+  doc.text('Manager / Supervisor Signature', 157, y, { align: 'center' });
+
+  addFooter();
+
+  doc.save(`VAC-Service-Report-${safe(report.contract_number)}-${cleanDate(report.visit_date)}.pdf`);
+};
 
   return (
     <div>
