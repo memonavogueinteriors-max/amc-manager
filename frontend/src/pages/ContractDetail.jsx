@@ -581,15 +581,23 @@ export default function ContractDetail() {
     y = sectionTitle('G', 'CLIENT SATISFACTION RATING', y);
 
     cell('Client Satisfaction', 15, y, 50, 10, true, tableHead);
-    cell('Excellent', 65, y, 32, 10);
-    cell('Good', 97, y, 32, 10);
-    cell('Average', 129, y, 32, 10);
-    cell('Needs Follow-up', 161, y, 34, 10);
+    emptyCell(65, y, 32, 10);
+    emptyCell(97, y, 32, 10);
+    emptyCell(129, y, 32, 10);
+    emptyCell(161, y, 34, 10);
 
-    drawCheckbox(79, y + 2.7, false);
-    drawCheckbox(111, y + 2.7, false);
-    drawCheckbox(143, y + 2.7, false);
-    drawCheckbox(177, y + 2.7, false);
+    drawCheckbox(68, y + 2.7, false);
+    drawCheckbox(100, y + 2.7, false);
+    drawCheckbox(132, y + 2.7, false);
+    drawCheckbox(164, y + 2.7, false);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.6);
+    doc.setTextColor(...dark);
+    doc.text('Excellent', 75, y + 6.2);
+    doc.text('Good', 107, y + 6.2);
+    doc.text('Average', 139, y + 6.2);
+    doc.text('Needs Follow-up', 171, y + 6.2);
 
     y += 17;
     y = checkPage(y, 40);
