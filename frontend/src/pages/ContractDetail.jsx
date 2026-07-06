@@ -400,10 +400,11 @@ export default function ContractDetail() {
       doc.rect(x, y, 4.5, 4.5);
 
       if (checked) {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(7);
-        doc.setTextColor(...dark);
-        doc.text('✓', x + 0.7, y + 3.5);
+        doc.setDrawColor(...dark);
+        doc.setLineWidth(0.55);
+        doc.line(x + 0.8, y + 2.4, x + 1.8, y + 3.5);
+        doc.line(x + 1.8, y + 3.5, x + 3.8, y + 1.0);
+        doc.setLineWidth(0.35);
       }
     };
 
@@ -517,7 +518,11 @@ export default function ContractDetail() {
 
         const done = !!form.checklist[item];
 
-        cell(index === 0 ? category : '', 15, y, 38, 9);
+        if (index === 0) {
+          cell(category, 15, y, 38, 9);
+        } else {
+          emptyCell(15, y, 38, 9);
+        }
         cell(item, 53, y, 82, 9);
         emptyCell(135, y, 20, 9);
         emptyCell(155, y, 20, 9);
