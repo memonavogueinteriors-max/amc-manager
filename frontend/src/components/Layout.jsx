@@ -9,8 +9,10 @@ const navItems = [
   { to: '/visits', label: 'Service Visits', icon: '🔧', section: null },
   { to: '/schedule', label: 'Schedule', icon: '📅', section: null },
   { to: '/tickets', label: 'Service Tickets', icon: '🎫', section: null },
-  { to: '/procurement', label: 'Procurement', icon: '🚚', section: 'Operations' },
-  { to: '/expenses', label: 'Expenses', icon: '💰', section: null },
+  { to: '/black-box', label: 'Black Box Thinking', icon: '🧠', section: 'Learning' },
+  { to: '/training-rules', label: 'Training Rule Book', icon: '📘', section: null },
+  { to: '/implementation-tracker', label: 'Implementation Tracker', icon: '✅', section: null },
+  { to: '/learning-reports', label: 'Learning Reports', icon: '📈', section: null },
   { to: '/reports', label: 'Reports', icon: '📊', section: 'Management' },
   { to: '/users', label: 'User Management', icon: '👤', section: null },
   { to: '/commissions', label: 'Commissions', icon: '💵', section: null },
@@ -32,21 +34,18 @@ export default function Layout() {
 
   // Owner/Admin can see everything
   if (user.role === 'owner' || user.role === 'admin') return true;
-
-  // Manager can see Procurement and Expenses, but not separate Commissions page
+  // Manager can see all remaining modules except the separate Commissions page.
   // because commission is already inside Sales Dashboard
   if (user.role === 'manager') {
     return path !== 'commissions';
   }
 
   // Sales can see only their allowed working pages
-  // Sales cannot see Users, Commissions, Procurement, Expenses, Reports, Recycle Bin
+  // Sales cannot see Users, Commissions, Reports or Recycle Bin.
   if (user.role === 'sales') {
     return ![
       'users',
       'commissions',
-      'procurement',
-      'expenses',
       'reports',
       'recycle'
     ].includes(path);

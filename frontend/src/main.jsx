@@ -12,17 +12,19 @@ import Villas from './pages/Villas';
 import Clients from './pages/Clients';
 import Tickets from './pages/Tickets';
 import Schedule from './pages/Schedule';
-import Procurement from './pages/Procurement';
 import Reports from './pages/Reports';
 import RecycleBin from './pages/RecycleBin';
 import Packages from './pages/Packages';
 import ServiceVisits from './pages/ServiceVisits';
-import Expenses from './pages/Expenses';
 import ClientTicket from './pages/ClientTicket';
 import ClientBooking from './pages/ClientBooking';
 import ServiceReports from './pages/ServiceReports';
 import Users from './pages/Users';
 import Commissions from './pages/Commissions';
+import BlackBox from './pages/BlackBox';
+import TrainingRules from './pages/TrainingRules';
+import ImplementationTracker from './pages/ImplementationTracker';
+import LearningReports from './pages/LearningReports';
 
 function PrivateRoute({ children }) {
   return localStorage.getItem('amc_token')
@@ -58,8 +60,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="visits" element={<ServiceVisits />} />
           <Route path="tickets" element={<Tickets />} />
           <Route path="schedule" element={<Schedule />} />
-          <Route path="procurement" element={<Procurement />} />
-          <Route path="expenses" element={<Expenses />} />
+          <Route path="black-box" element={<BlackBox />} />
+          <Route path="training-rules" element={<TrainingRules />} />
+          <Route path="implementation-tracker" element={<ImplementationTracker />} />
+          <Route path="learning-reports" element={<LearningReports />} />
           <Route path="reports" element={<Reports />} />
           <Route path="users" element={<Users />} />
           <Route path="commissions" element={<Commissions />} />
