@@ -8,9 +8,15 @@ function getDb() {
 }
 
 async function initDb() {
+  const isLocalDatabase =
+    process.env.DATABASE_URL?.includes('localhost') ||
+    process.env.DATABASE_URL?.includes('127.0.0.1');
+
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ...(isLocalDatabase
+      ? {}
+      : { ssl: { rejectUnauthorized: false } })
   });
 
   await pool.query(`
@@ -214,17 +220,17 @@ async function initDb() {
   `);
 
   const vacPackages = [
-    ['Silver — 4 AC Units', 'Silver', '4-Bedroom Villa', 5750, 479, 4],
-    ['Gold — 4 AC Units', 'Gold', '4-Bedroom Villa', 7400, 617, 4],
-    ['Platinum — 4 AC Units', 'Platinum', '4-Bedroom Villa', 9750, 812, 4],
+    ['Silver â€” 4 AC Units', 'Silver', '4-Bedroom Villa', 5750, 479, 4],
+    ['Gold â€” 4 AC Units', 'Gold', '4-Bedroom Villa', 7400, 617, 4],
+    ['Platinum â€” 4 AC Units', 'Platinum', '4-Bedroom Villa', 9750, 812, 4],
 
-    ['Silver — 6 AC Units', 'Silver', '5-6 Bedroom Large Villa', 7050, 588, 6],
-    ['Gold — 6 AC Units', 'Gold', '5-6 Bedroom Large Villa', 9100, 758, 6],
-    ['Platinum — 6 AC Units', 'Platinum', '5-6 Bedroom Large Villa', 12200, 1017, 6],
+    ['Silver â€” 6 AC Units', 'Silver', '5-6 Bedroom Large Villa', 7050, 588, 6],
+    ['Gold â€” 6 AC Units', 'Gold', '5-6 Bedroom Large Villa', 9100, 758, 6],
+    ['Platinum â€” 6 AC Units', 'Platinum', '5-6 Bedroom Large Villa', 12200, 1017, 6],
 
-    ['Silver — 8 AC Units', 'Silver', '7-8 Bedroom Luxury Villa', 8350, 696, 8],
-    ['Gold — 8 AC Units', 'Gold', '7-8 Bedroom Luxury Villa', 10850, 904, 8],
-    ['Platinum — 8 AC Units', 'Platinum', '7-8 Bedroom Luxury Villa', 14600, 1217, 8]
+    ['Silver â€” 8 AC Units', 'Silver', '7-8 Bedroom Luxury Villa', 8350, 696, 8],
+    ['Gold â€” 8 AC Units', 'Gold', '7-8 Bedroom Luxury Villa', 10850, 904, 8],
+    ['Platinum â€” 8 AC Units', 'Platinum', '7-8 Bedroom Luxury Villa', 14600, 1217, 8]
   ];
 
   for (const p of vacPackages) {
@@ -239,7 +245,7 @@ async function initDb() {
       plumbing: p[1] === 'Silver' ? 'Basic / visit' : 'Full / visit',
       electrical: p[1] === 'Silver' ? 'Not included' : 'Full / visit',
       parts_discount: p[1] === 'Silver' ? 0 : p[1] === 'Gold' ? 10 : 15,
-      priority: p[1] === 'Silver' ? 'Standard queue' : p[1] === 'Gold' ? 'Priority queue' : 'VIP — first slot',
+      priority: p[1] === 'Silver' ? 'Standard queue' : p[1] === 'Gold' ? 'Priority queue' : 'VIP â€” first slot',
       account_manager: p[1] === 'Platinum',
       asset_report: p[1] === 'Platinum',
       visit_months: ['April', 'July', 'October']
@@ -399,7 +405,7 @@ async function initDb() {
       );
     }
 
-    console.log('✅ Database seeded with sample data');
+    console.log('âœ… Database seeded with sample data');
   }
 
   return pool;

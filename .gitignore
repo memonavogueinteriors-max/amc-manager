@@ -11,3 +11,15 @@ backend/routes/*.backup-*.js
 
 frontend/fix-*.js
 frontend/src/pages/*.backup-*.jsx
+
+backend/backups/
+
+backend/google-oauth-credentials.json
+
+backend/google-oauth-token.json
+
+backend/backups/
+backend/.env
+frontend/.env.local
+**/node_modules/
+frontend/dist/
