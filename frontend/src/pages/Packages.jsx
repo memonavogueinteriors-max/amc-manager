@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 
 const API = 'https://amc-manager-production.up.railway.app/api';
 function authHeaders() {
@@ -12,7 +12,16 @@ export default function Packages() {
 
   useEffect(() => {
     fetch(`${API}/packages`, { headers: authHeaders() })
-      .then(r => r.json()).then(setPackages).catch(console.error);
+      .then(r => r.json())
+      .then(data => {
+        const cleanPackages = (Array.isArray(data) ? data : [])
+          .filter(packageItem =>
+            !String(packageItem?.name || '').includes('\u00e2')
+          );
+
+        setPackages(cleanPackages);
+      })
+      .catch(console.error);
   }, []);
 
   const tiers = ['All', 'Silver', 'Gold', 'Platinum'];
@@ -55,8 +64,8 @@ export default function Packages() {
         {selected && (
           <div className="card">
             <div className="card-header">
-              <div className="card-title">{selected.name} — Full Package Details</div>
-              <button className="btn btn-sm" onClick={() => setSelected(null)}>✕</button>
+              <div className="card-title">{selected.name} â€” Full Package Details</div>
+              <button className="btn btn-sm" onClick={() => setSelected(null)}>âœ•</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
               <div>
@@ -65,7 +74,7 @@ export default function Packages() {
                   ['AC Service Visits/Year', selected.services?.ac_visits],
                   ['Emergency Call-outs', selected.services?.emergency_callouts],
                   ['Response Time', selected.services?.response_time],
-                  ['Duct Cleaning', selected.services?.duct_cleaning ? '✓ Included' : '✕ Not included'],
+                  ['Duct Cleaning', selected.services?.duct_cleaning ? 'âœ“ Included' : 'âœ• Not included'],
                 ].map(([label, value]) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid var(--border)', fontSize: 13 }}>
                     <span style={{ color: 'var(--text-2)' }}>{label}</span>
@@ -88,9 +97,9 @@ export default function Packages() {
                 ))}
               </div>
             </div>
-            {selected.tier === 'Silver' && <div style={{ marginTop: 12, padding: 10, background: '#F1EFE8', borderRadius: 8, fontSize: 12, color: '#5F5E5A' }}>Essential villa protection — AC + electrical & plumbing check</div>}
-            {selected.tier === 'Gold' && <div style={{ marginTop: 12, padding: 10, background: '#FAEEDA', borderRadius: 8, fontSize: 12, color: '#854F0B' }}>Most popular — AC + duct + electrical & plumbing. Saves AED 1,500 vs buying separately</div>}
-            {selected.tier === 'Platinum' && <div style={{ marginTop: 12, padding: 10, background: '#E6F1FB', borderRadius: 8, fontSize: 12, color: '#185FA5' }}>Complete care — Full villa AC + duct + electrical + plumbing. Saves AED 2,500 vs buying separately</div>}
+            {selected.tier === 'Silver' && <div style={{ marginTop: 12, padding: 10, background: '#F1EFE8', borderRadius: 8, fontSize: 12, color: '#5F5E5A' }}>Essential villa protection â€” AC + electrical & plumbing check</div>}
+            {selected.tier === 'Gold' && <div style={{ marginTop: 12, padding: 10, background: '#FAEEDA', borderRadius: 8, fontSize: 12, color: '#854F0B' }}>Most popular â€” AC + duct + electrical & plumbing. Saves AED 1,500 vs buying separately</div>}
+            {selected.tier === 'Platinum' && <div style={{ marginTop: 12, padding: 10, background: '#E6F1FB', borderRadius: 8, fontSize: 12, color: '#185FA5' }}>Complete care â€” Full villa AC + duct + electrical + plumbing. Saves AED 2,500 vs buying separately</div>}
           </div>
         )}
       </div>
