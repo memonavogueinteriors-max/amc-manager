@@ -71,7 +71,19 @@ export default function BlackBox() {
         }
       });
 
-      setEntries(response.data);
+      const data = response.data;
+
+      const nextEntries = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.entries)
+          ? data.entries
+          : [];
+
+      if (!Array.isArray(data) && !Array.isArray(data?.entries)) {
+        console.error('Unexpected Black Box response:', data);
+      }
+
+      setEntries(nextEntries);
     } catch (err) {
       setError(
         err.response?.data?.error ||
@@ -86,7 +98,16 @@ export default function BlackBox() {
   const loadStats = async () => {
     try {
       const response = await api.get('/black-box/stats');
-      setStats(response.data);
+      const data = response.data || {};
+
+      setStats({
+        total: Number(data.total) || 0,
+        rulesCreated: Number(data.rulesCreated) || 0,
+        byStatus: Array.isArray(data.byStatus) ? data.byStatus : [],
+        byDepartment: Array.isArray(data.byDepartment)
+          ? data.byDepartment
+          : []
+      });
     } catch (err) {
       console.error('Unable to load Black Box statistics:', err);
     }
@@ -1080,3 +1101,4 @@ const formGridStyle = {
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
   gap: '0 16px'
 };
+
