@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 
 const statuses = [
@@ -619,7 +619,7 @@ export default function ImplementationTracker() {
                       </td>
 
                       <td style={tableCellStyle}>
-                        {action.department || '—'}
+                        {action.department || 'â€”'}
                       </td>
 
                       <td style={tableCellStyle}>
@@ -660,14 +660,7 @@ export default function ImplementationTracker() {
                           </button>
 
                           {canManage && (
-                            <button
-                              className="btn btn-sm"
-                              onClick={() =>
-                                openEditForm(action)
-                              }
-                            >
-                              Edit
-                            </button>
+                            <></>
                           )}
                         </div>
                       </td>
@@ -752,7 +745,7 @@ export default function ImplementationTracker() {
                             key={entry.id}
                             value={entry.id}
                           >
-                            {entry.department} —{' '}
+                            {entry.department} â€”{' '}
                             {entry.title}
                           </option>
                         )
@@ -789,7 +782,7 @@ export default function ImplementationTracker() {
                             key={rule.id}
                             value={rule.id}
                           >
-                            {rule.department} —{' '}
+                            {rule.department} â€”{' '}
                             {rule.title}
                           </option>
                         )
@@ -1021,23 +1014,9 @@ export default function ImplementationTracker() {
 
             {canManage && (
               <div style={formActionStyle}>
-                <button
-                  className="btn"
-                  onClick={() =>
-                    openEditForm(selectedAction)
-                  }
-                >
-                  Edit Action
-                </button>
+                <></>
 
-                <button
-                  className="btn"
-                  onClick={() =>
-                    deleteAction(selectedAction)
-                  }
-                >
-                  Delete
-                </button>
+                <></>
               </div>
             )}
           </div>
@@ -1181,7 +1160,7 @@ function Detail({ label, value }) {
 }
 
 function formatDate(value) {
-  if (!value) return '—';
+  if (!value) return 'â€”';
 
   return new Date(value).toLocaleDateString();
 }

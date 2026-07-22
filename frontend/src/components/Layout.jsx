@@ -1,22 +1,23 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+﻿import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: '⊞', section: 'Main', exact: true },
-  { to: '/contracts', label: 'Contracts', icon: '📄', section: null },
-  { to: '/clients', label: 'Clients', icon: '👥', section: null },
-  { to: '/packages', label: 'Packages', icon: '📦', section: 'Services' },
-  { to: '/service-reports', label: 'Service Reports', icon: '📋', section: null },
-  { to: '/visits', label: 'Service Visits', icon: '🔧', section: null },
-  { to: '/schedule', label: 'Schedule', icon: '📅', section: null },
-  { to: '/tickets', label: 'Service Tickets', icon: '🎫', section: null },
-  { to: '/black-box', label: 'Black Box Thinking', icon: '🧠', section: 'Learning' },
-  { to: '/training-rules', label: 'Training Rule Book', icon: '📘', section: null },
-  { to: '/implementation-tracker', label: 'Implementation Tracker', icon: '✅', section: null },
-  { to: '/learning-reports', label: 'Learning Reports', icon: '📈', section: null },
-  { to: '/reports', label: 'Reports', icon: '📊', section: 'Management' },
-  { to: '/users', label: 'User Management', icon: '👤', section: null },
-  { to: '/commissions', label: 'Commissions', icon: '💵', section: null },
-  { to: '/recycle', label: 'Recycle Bin', icon: '🗑️', section: null },
+  { to: '/', label: 'Dashboard', icon: '\u25C8', section: 'Main', exact: true },
+  { to: '/contracts', label: 'Contracts', icon: '\u{1F4C4}', section: null },
+  { to: '/clients', label: 'Clients', icon: '\u{1F465}', section: null },
+  { to: '/packages', label: 'Packages', icon: '\u{1F4E6}', section: 'Services' },
+  { to: '/service-reports', label: 'Service Reports', icon: '\u{1F4CB}', section: null },
+  { to: '/visits', label: 'Service Visits', icon: '\u{1F527}', section: null },
+  { to: '/schedule', label: 'Schedule', icon: '\u{1F4C5}', section: null },
+  { to: '/tickets', label: 'Service Tickets', icon: '\u{1F3AB}', section: null },
+  { to: '/black-box', label: 'Black Box Thinking', icon: '\u{1F9E0}', section: 'Learning' },
+  { to: '/training-rules', label: 'Training Rule Book', icon: '\u{1F4D8}', section: null },
+  { to: '/implementation-tracker', label: 'Implementation Tracker', icon: '\u2705', section: null },
+  { to: '/learning-reports', label: 'Learning Reports', icon: '\u{1F4C8}', section: null },
+  { to: '/backup-status', label: 'Backup Status', icon: '\u2601\uFE0F', section: 'Owner' },
+  { to: '/reports', label: 'Reports', icon: '\u{1F4CA}', section: 'Management' },
+  { to: '/users', label: 'User Management', icon: '\u{1F464}', section: null },
+  { to: '/commissions', label: 'Commissions', icon: '\u{1F4B5}', section: null },
+  { to: '/recycle', label: 'Recycle Bin', icon: '\u{1F5D1}\uFE0F', section: null },
 ];
 
 export default function Layout() {
@@ -31,6 +32,10 @@ export default function Layout() {
 
  const visibleItems = navItems.filter(item => {
   const path = item.to.replace('/', '');
+
+  if (path === 'backup-status') {
+    return user.role === 'owner' || user.role === 'admin';
+  }
 
   // Owner/Admin can see everything
   if (user.role === 'owner' || user.role === 'admin') return true;

@@ -19,6 +19,7 @@ async function start() {
   app.use('/api/training-rules', require('./routes/training-rules'));
   app.use('/api/implementation-tracker', require('./routes/implementation-tracker'));
   app.use('/api/learning-reports', require('./routes/learning-reports'));
+  app.use('/api/backup', require('./routes/backup-status'));
 
   const { clientsRouter, villasRouter, ticketsRouter, scheduleRouter, procurementRouter, dashboardRouter, contractsRouter } = require('./routes/all');
   app.use('/api/contracts', contractsRouter);
@@ -33,10 +34,9 @@ async function start() {
 
   const PORT = process.env.PORT || 5000;
   app.listen(PORT, () => {
-    console.log(`✅ AMC Server running on http://localhost:${PORT}`);
-    const { backup } = require('./backup');
-    backup();
-    setInterval(() => { backup(); }, 24 * 60 * 60 * 1000);
+    console.log(`âœ… AMC Server running on http://localhost:${PORT}`);
+    const { startBackupScheduler } = require('./backup');
+    startBackupScheduler();
   });
 }
 

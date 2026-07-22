@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 
 const emptyForm = {
@@ -432,7 +432,7 @@ export default function TrainingRules() {
                   key={entry.id}
                   value={entry.id}
                 >
-                  {entry.department} — {entry.title}
+                  {entry.department} â€” {entry.title}
                 </option>
               ))}
             </select>
@@ -649,7 +649,7 @@ export default function TrainingRules() {
                     </td>
 
                     <td style={tableCellStyle}>
-                      {rule.approved_by || '—'}
+                      {rule.approved_by || 'â€”'}
                     </td>
 
                     <td style={tableCellStyle}>
@@ -668,14 +668,7 @@ export default function TrainingRules() {
                         </button>
 
                         {canManage && (
-                          <button
-                            className="btn btn-sm"
-                            onClick={() =>
-                              openEditForm(rule)
-                            }
-                          >
-                            Edit
-                          </button>
+                          <></>
                         )}
 
                         {rule.status === 'Active' &&
@@ -1016,23 +1009,9 @@ export default function TrainingRules() {
 
               {canManage && (
                 <>
-                  <button
-                    className="btn"
-                    onClick={() =>
-                      openEditForm(selectedRule)
-                    }
-                  >
-                    Edit Rule
-                  </button>
+                  <></>
 
-                  <button
-                    className="btn"
-                    onClick={() =>
-                      deleteRule(selectedRule)
-                    }
-                  >
-                    Delete
-                  </button>
+                  <></>
                 </>
               )}
             </div>
@@ -1177,7 +1156,7 @@ function Detail({ label, value }) {
 }
 
 function formatDate(value) {
-  if (!value) return '—';
+  if (!value) return 'â€”';
 
   return new Date(value).toLocaleDateString();
 }

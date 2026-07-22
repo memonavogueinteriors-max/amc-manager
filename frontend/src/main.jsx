@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './index.css';
@@ -25,11 +25,21 @@ import BlackBox from './pages/BlackBox';
 import TrainingRules from './pages/TrainingRules';
 import ImplementationTracker from './pages/ImplementationTracker';
 import LearningReports from './pages/LearningReports';
+import BackupStatus from './pages/BackupStatus';
 
 function PrivateRoute({ children }) {
   return localStorage.getItem('amc_token')
     ? children
     : <Navigate to="/login" replace />;
+}
+function OwnerRoute({ children }) {
+  const user = JSON.parse(
+    localStorage.getItem('amc_user') || '{}'
+  );
+
+  return ['owner', 'admin'].includes(user.role)
+    ? children
+    : <Navigate to="/" replace />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -64,6 +74,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="training-rules" element={<TrainingRules />} />
           <Route path="implementation-tracker" element={<ImplementationTracker />} />
           <Route path="learning-reports" element={<LearningReports />} />
+          <Route
+            path="backup-status"
+            element={
+              <OwnerRoute>
+                <BackupStatus />
+              </OwnerRoute>
+            }
+          />
           <Route path="reports" element={<Reports />} />
           <Route path="users" element={<Users />} />
           <Route path="commissions" element={<Commissions />} />

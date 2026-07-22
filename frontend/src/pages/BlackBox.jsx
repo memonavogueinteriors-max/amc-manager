@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
@@ -501,7 +501,7 @@ export default function BlackBox() {
                     </td>
 
                     <td style={tableCellStyle}>
-                      {entry.employee_name || '—'}
+                      {entry.employee_name || 'â€”'}
                     </td>
 
                     <td style={tableCellStyle}>
@@ -509,13 +509,13 @@ export default function BlackBox() {
                     </td>
 
                     <td style={tableCellStyle}>
-                      {entry.responsible_person || '—'}
+                      {entry.responsible_person || 'â€”'}
                     </td>
 
                     <td style={tableCellStyle}>
                       {entry.due_date
                         ? new Date(entry.due_date).toLocaleDateString()
-                        : '—'}
+                        : 'â€”'}
                     </td>
 
                     <td style={tableCellStyle}>
@@ -537,12 +537,7 @@ export default function BlackBox() {
                           View
                         </button>
 
-                        <button
-                          className="btn btn-sm"
-                          onClick={() => openEditForm(entry)}
-                        >
-                          Edit
-                        </button>
+                        <></>
 
                         {canDelete && !entry.has_training_rule && (
                           <button
@@ -563,12 +558,7 @@ export default function BlackBox() {
                         )}
 
                         {canDelete && (
-                          <button
-                            className="btn btn-sm"
-                            onClick={() => deleteEntry(entry)}
-                          >
-                            Delete
-                          </button>
+                          <></>
                         )}
                       </div>
                     </td>
@@ -928,20 +918,10 @@ export default function BlackBox() {
                 </span>
               )}
 
-              <button
-                className="btn"
-                onClick={() => openEditForm(selectedEntry)}
-              >
-                Edit Lesson
-              </button>
+              <></>
 
               {canDelete && (
-                <button
-                  className="btn"
-                  onClick={() => deleteEntry(selectedEntry)}
-                >
-                  Delete
-                </button>
+                <></>
               )}
             </div>
           </div>
