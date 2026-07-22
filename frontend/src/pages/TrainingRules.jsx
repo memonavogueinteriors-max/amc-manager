@@ -76,7 +76,15 @@ export default function TrainingRules() {
         }
       });
 
-      setRules(response.data);
+      const data = response.data;
+
+      setRules(
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data?.rules)
+            ? data.rules
+            : []
+      );
     } catch (err) {
       setError(
         err.response?.data?.error ||
@@ -91,7 +99,16 @@ export default function TrainingRules() {
   const loadStats = async () => {
     try {
       const response = await api.get('/training-rules/stats');
-      setStats(response.data);
+      const data = response.data || {};
+
+      setStats({
+        total: Number(data.total) || 0,
+        draft: Number(data.draft) || 0,
+        active: Number(data.active) || 0,
+        archived: Number(data.archived) || 0,
+        acknowledgements:
+          Number(data.acknowledgements) || 0
+      });
     } catch (err) {
       console.error('Unable to load rule statistics:', err);
     }
@@ -105,7 +122,15 @@ export default function TrainingRules() {
         '/training-rules/black-box-options'
       );
 
-      setBlackBoxOptions(response.data);
+      const data = response.data;
+
+      setBlackBoxOptions(
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data?.blackBoxOptions)
+            ? data.blackBoxOptions
+            : []
+      );
     } catch (err) {
       console.error(
         'Unable to load Black Box lessons:',
@@ -1341,3 +1366,4 @@ const detailValueStyle = {
   whiteSpace: 'pre-wrap',
   lineHeight: 1.65
 };
+

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import api from '../api';
@@ -57,7 +57,52 @@ export default function LearningReports() {
         }
       );
 
-      setReport(response.data);
+      const data = response.data || {};
+
+      setReport({
+        period: data.period || {
+          from: filters.from,
+          to: filters.to,
+          department:
+            filters.department || 'All Departments'
+        },
+
+        summary: {
+          blackBox: data.summary?.blackBox || {},
+          trainingRules:
+            data.summary?.trainingRules || {},
+          implementation:
+            data.summary?.implementation || {}
+        },
+
+        blackBoxEntries: Array.isArray(
+          data.blackBoxEntries
+        )
+          ? data.blackBoxEntries
+          : [],
+
+        trainingRules: Array.isArray(
+          data.trainingRules
+        )
+          ? data.trainingRules
+          : [],
+
+        implementationActions: Array.isArray(
+          data.implementationActions
+        )
+          ? data.implementationActions
+          : [],
+
+        contributors: Array.isArray(data.contributors)
+          ? data.contributors
+          : [],
+
+        repeatedLessons: Array.isArray(
+          data.repeatedLessons
+        )
+          ? data.repeatedLessons
+          : []
+      });
     } catch (err) {
       setError(
         err.response?.data?.error ||
@@ -446,7 +491,7 @@ export default function LearningReports() {
               <div>
                 <strong>Period:</strong>{' '}
                 {formatDate(report.period.from)}
-                {' — '}
+                {' â€” '}
                 {formatDate(report.period.to)}
               </div>
 
@@ -823,7 +868,7 @@ function ReportTable({
                         key={columnIndex}
                         style={tableCellStyle}
                       >
-                        {value ?? '—'}
+                        {value ?? 'â€”'}
                       </td>
                     )
                   )}
@@ -838,7 +883,7 @@ function ReportTable({
 }
 
 function formatDate(value) {
-  if (!value) return '—';
+  if (!value) return 'â€”';
 
   const date = new Date(value);
 

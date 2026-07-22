@@ -91,7 +91,15 @@ export default function ImplementationTracker() {
         }
       );
 
-      setActions(response.data);
+      const data = response.data;
+
+      setActions(
+        Array.isArray(data)
+          ? data
+          : Array.isArray(data?.actions)
+            ? data.actions
+            : []
+      );
     } catch (err) {
       setError(
         err.response?.data?.error ||
@@ -109,7 +117,18 @@ export default function ImplementationTracker() {
         '/implementation-tracker/stats'
       );
 
-      setStats(response.data);
+      const data = response.data || {};
+
+      setStats({
+        total: Number(data.total) || 0,
+        not_started: Number(data.not_started) || 0,
+        in_progress: Number(data.in_progress) || 0,
+        implemented: Number(data.implemented) || 0,
+        verification_required:
+          Number(data.verification_required) || 0,
+        verified: Number(data.verified) || 0,
+        overdue: Number(data.overdue) || 0
+      });
     } catch (err) {
       console.error(
         'Unable to load implementation statistics:',
@@ -124,7 +143,16 @@ export default function ImplementationTracker() {
         '/implementation-tracker/source-options'
       );
 
-      setSourceOptions(response.data);
+      const data = response.data || {};
+
+      setSourceOptions({
+        blackBox: Array.isArray(data.blackBox)
+          ? data.blackBox
+          : [],
+        trainingRules: Array.isArray(data.trainingRules)
+          ? data.trainingRules
+          : []
+      });
     } catch (err) {
       console.error(
         'Unable to load source options:',
@@ -1339,3 +1367,4 @@ const detailValueStyle = {
   whiteSpace: 'pre-wrap',
   lineHeight: 1.65
 };
+
