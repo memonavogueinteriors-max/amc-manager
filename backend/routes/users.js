@@ -1,4 +1,4 @@
-const router = require('express').Router();
+﻿const router = require('express').Router();
 const { getDb } = require('../db/database');
 const { auth } = require('../middleware/auth');
 const bcrypt = require('bcryptjs');
@@ -391,8 +391,18 @@ router.get('/sales-stats', auth, async (req, res) => {
 
         FROM contracts c
         WHERE c.deleted = false
-          AND c.start_date >= date_trunc('month', CURRENT_DATE)
-          AND c.start_date < date_trunc('month', CURRENT_DATE) + interval '1 month'
+          AND CASE
+                WHEN c.start_date ~ '^\d{4}-\d{2}-\d{2}$'
+                THEN c.start_date::date
+                ELSE NULL
+              END >= date_trunc('month', CURRENT_DATE)::date
+          AND CASE
+                WHEN c.start_date ~ '^\d{4}-\d{2}-\d{2}$'
+                THEN c.start_date::date
+                ELSE NULL
+              END < (
+                date_trunc('month', CURRENT_DATE) + interval '1 month'
+              )::date
         GROUP BY c.sales_person_id
       ),
 
@@ -493,3 +503,4 @@ router.get('/sales-stats', auth, async (req, res) => {
   }
 });
 module.exports = router;
+

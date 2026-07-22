@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 
@@ -26,7 +26,14 @@ export function Dashboard() {
   useEffect(() => {
     apiFetch('/dashboard').then(setStats).catch(console.error);
     apiFetch('/packages/expenses').then(setExpenses).catch(console.error);
-    apiFetch('/users/sales-stats').then(setSalesStats).catch(console.error);
+    apiFetch('/users/sales-stats')
+      .then(data => {
+        setSalesStats(Array.isArray(data) ? data : []);
+      })
+      .catch(error => {
+        console.error(error);
+        setSalesStats([]);
+      });
   }, []);
 
   if (!stats) {
@@ -120,7 +127,7 @@ export function Dashboard() {
                   AED {Math.round(Number(mySalesRow.commission_due || 0)).toLocaleString()}
                 </div>
                 <div className="metric-sub">
-                  Silver 500 · Gold 700 · Platinum 1,100
+                  Silver 500 Â· Gold 700 Â· Platinum 1,100
                 </div>
               </div>
 
@@ -336,7 +343,7 @@ export function Dashboard() {
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{a.label}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                    {a.type} · {new Date(a.created_at).toLocaleDateString()}
+                    {a.type} Â· {new Date(a.created_at).toLocaleDateString()}
                   </div>
                 </div>
               </div>
@@ -464,7 +471,7 @@ annual_value: parseFloat(next.annual_value || pkgAnnual[next.package] || 5750),
     doc.setTextColor(...white); doc.setFontSize(20); doc.setFont('helvetica', 'bold');
     doc.text('VOGUE AIR CARE', 60, 22);
     doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-    doc.text('AC · Duct Cleaning · Electrical · Plumbing · Dubai Villa Specialist', 60, 30);
+    doc.text('AC Â· Duct Cleaning Â· Electrical Â· Plumbing Â· Dubai Villa Specialist', 60, 30);
     doc.text('+971 50 127 5342', 60, 38);
     doc.setFillColor(250, 248, 240); doc.rect(0, 50, 210, 297, 'F');
     doc.setTextColor(...darkGold); doc.setFontSize(16); doc.setFont('helvetica', 'bold');
@@ -486,9 +493,9 @@ annual_value: parseFloat(next.annual_value || pkgAnnual[next.package] || 5750),
 
     const details = [
       ['Contract Number', c.contract_number],
-      ['File Number', c.file_number || '—'],
+      ['File Number', c.file_number || 'â€”'],
       ['Client Name', c.client_name],
-      ['Address', c.client_address || '—'],
+      ['Address', c.client_address || 'â€”'],
       ['Property Type', c.property_type || 'Villa'],
       ['Package', c.package],
 
@@ -497,9 +504,9 @@ annual_value: parseFloat(next.annual_value || pkgAnnual[next.package] || 5750),
       ['Final Approved Price', `AED ${finalPrice.toLocaleString()}`],
       ['Monthly Value', `AED ${Number(c.monthly_value || 0).toLocaleString()}`],
 
-      ['Discount Reason', c.discount_reason || '—'],
-      ['Approved By', c.discount_approved_by || '—'],
-      ['Approved Date', c.discount_approved_date ? String(c.discount_approved_date).split('T')[0] : '—'],
+      ['Discount Reason', c.discount_reason || 'â€”'],
+      ['Approved By', c.discount_approved_by || 'â€”'],
+      ['Approved Date', c.discount_approved_date ? String(c.discount_approved_date).split('T')[0] : 'â€”'],
 
       ['Start Date', c.start_date],
       ['End Date', c.end_date],
@@ -511,7 +518,7 @@ annual_value: parseFloat(next.annual_value || pkgAnnual[next.package] || 5750),
       doc.setFont('helvetica', 'bold'); doc.setTextColor(...gray); doc.setFontSize(10);
       doc.text(label + ':', 25, y);
       doc.setFont('helvetica', 'normal'); doc.setTextColor(...dark);
-      doc.text(String(value || '—'), 90, y);
+      doc.text(String(value || 'â€”'), 90, y);
       y += 12;
     });
     y += 5;
@@ -521,12 +528,12 @@ annual_value: parseFloat(next.annual_value || pkgAnnual[next.package] || 5750),
     const services = {
       Silver: ['3 AC Service Visits/Year (April, July, October)', '1 Emergency AC, Plumbing & Electrical Call-out/year', '4-hour Emergency Response Time', 'Chemical Coil Deep Clean (1x/year)', 'Duct Chemical Cleaning included', 'Basic Plumbing Health Check', 'Service Completion Report every visit', '24-Hr Workmanship Guarantee'],
       Gold: ['3 AC Service Visits/Year (April, July, October)', '2 Emergency AC, Plumbing & Electrical Call-outs/year', '3-hour Emergency Response Time', 'Chemical Coil Deep Clean (1x/year)', 'RoboTech Duct Inspection (partial)', 'Full Plumbing & Electrical Health Check', 'Priority Scheduling', '10% Parts Discount', '24-Hr Workmanship Guarantee'],
-      Platinum: ['3 AC Service Visits/Year (April, July, October)', '3 Emergency AC, Plumbing & Electrical Call-outs/year', '2-hour Emergency Response Time', 'RoboTech Full Duct Inspection & Clean', 'Full Plumbing & Electrical Health Check', 'VIP Scheduling — First Slot', 'Dedicated Account Manager', 'Annual Asset Health Report', '15% Parts Discount', '24-Hr Workmanship Guarantee']
+      Platinum: ['3 AC Service Visits/Year (April, July, October)', '3 Emergency AC, Plumbing & Electrical Call-outs/year', '2-hour Emergency Response Time', 'RoboTech Full Duct Inspection & Clean', 'Full Plumbing & Electrical Health Check', 'VIP Scheduling â€” First Slot', 'Dedicated Account Manager', 'Annual Asset Health Report', '15% Parts Discount', '24-Hr Workmanship Guarantee']
     };
     const pkgServices = services[tier] || services.Silver;
     doc.setFontSize(10);
     pkgServices.forEach(s => {
-      doc.setTextColor(186, 148, 62); doc.text('✓', 25, y);
+      doc.setTextColor(186, 148, 62); doc.text('âœ“', 25, y);
       doc.setTextColor(...dark); doc.setFont('helvetica', 'normal'); doc.text(s, 33, y);
       y += 9; if (y > 265) { doc.addPage(); y = 20; }
     });
@@ -538,9 +545,9 @@ annual_value: parseFloat(next.annual_value || pkgAnnual[next.package] || 5750),
     doc.text('Vogue Air Care Representative', 157, y, { align: 'center' });
     doc.setFillColor(...gold); doc.rect(0, 272, 210, 25, 'F');
     doc.setTextColor(...white); doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-    doc.text("VOGUE AIR CARE — Dubai's Villa AC Specialist", 105, 281, { align: 'center' });
+    doc.text("VOGUE AIR CARE â€” Dubai's Villa AC Specialist", 105, 281, { align: 'center' });
     doc.setFont('helvetica', 'normal');
-    doc.text('+971 50 127 5342 | AC · Duct Cleaning · Electrical · Plumbing', 105, 289, { align: 'center' });
+    doc.text('+971 50 127 5342 | AC Â· Duct Cleaning Â· Electrical Â· Plumbing', 105, 289, { align: 'center' });
     doc.text('All prices excl. 5% VAT. Fixed annual fees. No hidden charges.', 105, 293, { align: 'center' });
     doc.save(`VAC-Contract-${c.contract_number}.pdf`);
   };
@@ -586,8 +593,8 @@ annual_value: parseFloat(next.annual_value || pkgAnnual[next.package] || 5750),
                     return (
                       <tr key={c.id} style={{ cursor: 'pointer' }} onClick={(e) => { if (!['BUTTON','SELECT','OPTION','INPUT'].includes(e.target.tagName)) navigate(`/contracts/${c.id}`); }}>
                         <td style={{ fontWeight: 500 }}>{c.contract_number}</td>
-                        <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{c.file_number || '—'}</td>
-                        <td>{c.client_name || '—'}</td>
+                        <td style={{ fontSize: 12, color: 'var(--text-3)' }}>{c.file_number || 'â€”'}</td>
+                        <td>{c.client_name || 'â€”'}</td>
                         <td>
                           <input
                             className="form-input"
@@ -626,7 +633,7 @@ annual_value: parseFloat(next.annual_value || pkgAnnual[next.package] || 5750),
                             onChange={e => updateContractRow(c, { end_date: e.target.value })}
                           />
                         </td>
-                        <td style={{ fontSize: 12, color: '#BA7517' }}>{c.next_service_date || '—'}</td>
+                        <td style={{ fontSize: 12, color: '#BA7517' }}>{c.next_service_date || 'â€”'}</td>
                         <td>
                           <div style={{ minWidth: 80 }}>
                             <div style={{ fontSize: 11, fontWeight: 600, color: pctColor, marginBottom: 3 }}>{pct}%</div>
@@ -727,10 +734,10 @@ export function Villas() {
                     <tr key={v.id}>
                       <td style={{ fontWeight: 500 }}>{v.villa_number}</td>
                       <td>Block {v.block}</td>
-                      <td>{v.client_name || '—'}</td>
-                      <td>{v.package || '—'}</td>
-                      <td>{v.monthly_value ? `AED ${v.monthly_value.toLocaleString()}` : '—'}</td>
-                      <td>{v.end_date || '—'}</td>
+                      <td>{v.client_name || 'â€”'}</td>
+                      <td>{v.package || 'â€”'}</td>
+                      <td>{v.monthly_value ? `AED ${v.monthly_value.toLocaleString()}` : 'â€”'}</td>
+                      <td>{v.end_date || 'â€”'}</td>
                       <td>{v.contract_status ? <span className={`pill pill-${v.contract_status}`}>{v.contract_status}</span> : <span style={{ color: 'var(--text-3)', fontSize: 12 }}>No contract</span>}</td>
                       <td style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-sm" onClick={() => openEdit(v)}>Edit</button>
@@ -752,7 +759,7 @@ export function Villas() {
           <div className="modal">
             <div className="modal-header">
               <div className="modal-title">{editItem ? 'Edit Villa' : 'Add Villa'}</div>
-              <button className="btn btn-sm" onClick={() => setModal(false)}>✕</button>
+              <button className="btn btn-sm" onClick={() => setModal(false)}>âœ•</button>
             </div>
             <div className="form-row">
               <div className="form-group">
@@ -859,11 +866,11 @@ export function Clients() {
                           <span style={{ fontWeight: 500 }}>{c.name}</span>
                         </div>
                       </td>
-                      <td>{c.address || '—'}</td>
-                      <td>{c.phone || '—'}</td>
-                      <td>{c.email || '—'}</td>
+                      <td>{c.address || 'â€”'}</td>
+                      <td>{c.phone || 'â€”'}</td>
+                      <td>{c.email || 'â€”'}</td>
                       <td>{c.contract_count || 0}</td>
-                      <td>{c.total_monthly ? `AED ${Math.round(c.total_monthly).toLocaleString()}` : '—'}</td>
+                      <td>{c.total_monthly ? `AED ${Math.round(c.total_monthly).toLocaleString()}` : 'â€”'}</td>
                       <td style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-sm" onClick={() => openEdit(c)}>Edit</button>
                         <button className="btn btn-sm btn-danger" onClick={() => del(c.id)}>Delete</button>
@@ -882,7 +889,7 @@ export function Clients() {
           <div className="modal">
             <div className="modal-header">
               <div className="modal-title">{editItem ? 'Edit Client' : 'Add Client'}</div>
-              <button className="btn btn-sm" onClick={() => setModal(false)}>✕</button>
+              <button className="btn btn-sm" onClick={() => setModal(false)}>âœ•</button>
             </div>
             <div className="form-group">
               <label className="form-label">Full Name</label>
@@ -917,6 +924,7 @@ export function Clients() {
     </div>
   );
 }
+
 
 
 
