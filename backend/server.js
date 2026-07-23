@@ -15,11 +15,7 @@ async function start() {
   app.use('/api/packages', require('./routes/packages'));
   app.use('/api/users', require('./routes/users'));
   app.use('/api/service-reports', require('./routes/reports'));
-  app.use('/api/black-box', require('./routes/black-box'));
-  app.use('/api/training-rules', require('./routes/training-rules'));
-  app.use('/api/implementation-tracker', require('./routes/implementation-tracker'));
-  app.use('/api/learning-reports', require('./routes/learning-reports'));
-  app.use('/api/backup', require('./routes/backup-status'));
+    app.use('/api/backup', require('./routes/backup-status'));
 
   const { clientsRouter, villasRouter, ticketsRouter, scheduleRouter, procurementRouter, dashboardRouter, contractsRouter } = require('./routes/all');
   app.use('/api/contracts', contractsRouter);
