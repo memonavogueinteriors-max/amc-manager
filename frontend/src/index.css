@@ -200,3 +200,18 @@
     width: 88vw;
   }
 }
+@media (max-width: 768px) {
+  .sidebar {
+    left: 0;
+    transform: translateX(-105%) !important;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+
+  .main {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+}

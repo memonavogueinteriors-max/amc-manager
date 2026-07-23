@@ -924,7 +924,3 @@ export function Clients() {
     </div>
   );
 }
-
-
-
-

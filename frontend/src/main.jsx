@@ -67,7 +67,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="visits" element={<ServiceVisits />} />
           <Route path="tickets" element={<Tickets />} />
           <Route path="schedule" element={<Schedule />} />
-          />
+         
           <Route
             path="backup-status"
             element={
