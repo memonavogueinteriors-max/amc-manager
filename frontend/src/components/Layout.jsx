@@ -1,4 +1,5 @@
-﻿import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+﻿import { useState } from 'react';
+import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: '\u25C8', section: 'Main', exact: true },
@@ -23,6 +24,7 @@ const navItems = [
 export default function Layout() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('amc_user') || '{}');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const logout = () => {
     localStorage.removeItem('amc_token');
@@ -30,64 +32,137 @@ export default function Layout() {
     navigate('/login');
   };
 
- const visibleItems = navItems.filter(item => {
-  const path = item.to.replace('/', '');
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
 
-  if (path === 'backup-status') {
-    return user.role === 'owner' || user.role === 'admin';
-  }
+  const visibleItems = navItems.filter((item) => {
+    const path = item.to.replace('/', '');
 
-  // Owner/Admin can see everything
-  if (user.role === 'owner' || user.role === 'admin') return true;
-  // Manager can see all remaining modules except the separate Commissions page.
-  // because commission is already inside Sales Dashboard
-  if (user.role === 'manager') {
-    return path !== 'commissions';
-  }
+    if (path === 'backup-status') {
+      return user.role === 'owner' || user.role === 'admin';
+    }
 
-  // Sales can see only their allowed working pages
-  // Sales cannot see Users, Commissions, Reports or Recycle Bin.
-  if (user.role === 'sales') {
-    return ![
-      'users',
-      'commissions',
-      'reports',
-      'recycle'
-    ].includes(path);
-  }
+    if (user.role === 'owner' || user.role === 'admin') return true;
 
-  return true;
-});
+    if (user.role === 'manager') {
+      return path !== 'commissions';
+    }
+
+    if (user.role === 'sales') {
+      return ![
+        'users',
+        'commissions',
+        'reports',
+        'recycle',
+      ].includes(path);
+    }
+
+    return true;
+  });
+
+  const roleLabel =
+    user.role === 'manager'
+      ? 'Operational Manager'
+      : user.role || '';
 
   return (
     <div className="app">
-      <aside className="sidebar">
+      <button
+        type="button"
+        className="mobile-menu-button"
+        onClick={() => setMobileMenuOpen(true)}
+        aria-label="Open menu"
+      >
+        ☰
+      </button>
+
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          className="mobile-sidebar-overlay"
+          onClick={closeMobileMenu}
+          aria-label="Close menu"
+        />
+      )}
+
+      <aside className={`sidebar${mobileMenuOpen ? ' mobile-open' : ''}`}>
+        <button
+          type="button"
+          className="mobile-menu-close"
+          onClick={closeMobileMenu}
+          aria-label="Close menu"
+        >
+          ×
+        </button>
+
         <div className="sidebar-logo">
-          <img src="/logo.png" alt="VAC Logo" style={{width:'100%', maxHeight:70, objectFit:'contain', marginBottom:4}} onError={e => e.target.style.display='none'} />
-          <div className="logo-name" style={{fontSize:13, fontWeight:600}}>VAC AMC Management</div>
+          <img
+            src="/logo.png"
+            alt="VAC Logo"
+            style={{
+              width: '100%',
+              maxHeight: 70,
+              objectFit: 'contain',
+              marginBottom: 4,
+            }}
+            onError={(event) => {
+              event.currentTarget.style.display = 'none';
+            }}
+          />
+
+          <div
+            className="logo-name"
+            style={{ fontSize: 13, fontWeight: 600 }}
+          >
+            VAC AMC Management
+          </div>
+
           <div className="logo-sub">Service Portal</div>
         </div>
-        <nav style={{ flex: 1, overflowY: 'auto', paddingBottom: '1rem' }}>
-          {visibleItems.map((item, i) => (
-            <div key={i}>
-              {item.section && <div className="nav-section">{item.section}</div>}
+
+        <nav className="sidebar-navigation">
+          {visibleItems.map((item) => (
+            <div key={item.to}>
+              {item.section && (
+                <div className="nav-section">{item.section}</div>
+              )}
+
               <NavLink
                 to={item.to}
                 end={item.exact}
-                className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+                onClick={closeMobileMenu}
+                className={({ isActive }) =>
+                  `nav-link${isActive ? ' active' : ''}`
+                }
               >
                 <span className="nav-icon">{item.icon}</span>
-                {item.label}
+                <span>{item.label}</span>
               </NavLink>
             </div>
           ))}
         </nav>
-        <div style={{ padding: '1rem', borderTop: '0.5px solid var(--border)' }}>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>{user.name}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 8, textTransform: 'uppercase' }}>{user.role}</div>
-          <button className="btn btn-sm" onClick={logout} style={{ width: '100%', justifyContent: 'center' }}>Logout</button>
+
+        <div className="sidebar-user">
+          <div className="sidebar-user-name">{user.name}</div>
+
+          <div className="sidebar-user-role">
+            {roleLabel}
+          </div>
+
+          <button
+            className="btn btn-sm"
+            onClick={logout}
+            style={{
+              width: '100%',
+              justifyContent: 'center',
+            }}
+          >
+            Logout
+          </button>
         </div>
       </aside>
+
       <main className="main">
         <Outlet />
       </main>
