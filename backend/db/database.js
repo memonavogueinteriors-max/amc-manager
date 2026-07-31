@@ -220,26 +220,54 @@ async function initDb() {
       customer_name TEXT NOT NULL,
       mobile TEXT NOT NULL,
       whatsapp TEXT,
+      email TEXT,
       address TEXT,
       google_map TEXT,
+      google_maps_link TEXT,
 
       service_type TEXT NOT NULL,
 
       booking_date DATE NOT NULL,
       booking_time TIME,
+      preferred_time TEXT,
 
       assigned_technician TEXT,
 
-      status TEXT DEFAULT 'New',
+      status TEXT DEFAULT 'New Lead',
 
       price NUMERIC DEFAULT 0,
+      discount NUMERIC DEFAULT 0,
+      final_amount NUMERIC DEFAULT 0,
+      payment_method TEXT,
 
       notes TEXT,
 
       created_by INTEGER,
 
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+  `);
+  await pool.query(`
+    ALTER TABLE service_bookings
+      ADD COLUMN IF NOT EXISTS email TEXT,
+      ADD COLUMN IF NOT EXISTS google_maps_link TEXT,
+      ADD COLUMN IF NOT EXISTS preferred_time TEXT,
+      ADD COLUMN IF NOT EXISTS discount NUMERIC DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS final_amount NUMERIC DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS payment_method TEXT,
+      ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+    UPDATE service_bookings
+    SET
+      status = CASE WHEN status = 'New' THEN 'New Lead' ELSE status END,
+      google_maps_link = COALESCE(NULLIF(google_maps_link, ''), google_map),
+      preferred_time = COALESCE(NULLIF(preferred_time, ''), booking_time::text),
+      discount = COALESCE(discount, 0),
+      final_amount = CASE
+        WHEN final_amount IS NULL OR final_amount = 0 THEN GREATEST(COALESCE(price, 0) - COALESCE(discount, 0), 0)
+        ELSE final_amount
+      END;
   `);
   await pool.query(`
     DELETE FROM packages
