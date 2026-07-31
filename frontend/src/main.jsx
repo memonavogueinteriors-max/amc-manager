@@ -15,6 +15,7 @@ import Schedule from './pages/Schedule';
 import Reports from './pages/Reports';
 import RecycleBin from './pages/RecycleBin';
 import Packages from './pages/Packages';
+import ServiceBookings from './pages/ServiceBookings';
 import ServiceVisits from './pages/ServiceVisits';
 import ClientTicket from './pages/ClientTicket';
 import ClientBooking from './pages/ClientBooking';
@@ -63,6 +64,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="villas" element={<Villas />} />
           <Route path="clients" element={<Clients />} />
           <Route path="packages" element={<Packages />} />
+<Route
+  path="service-bookings"
+  element={<ServiceBookings />}
+/>
           <Route path="service-reports" element={<ServiceReports />} />
           <Route path="visits" element={<ServiceVisits />} />
           <Route path="tickets" element={<Tickets />} />

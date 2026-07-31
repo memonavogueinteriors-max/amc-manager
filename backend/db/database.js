@@ -211,7 +211,36 @@ async function initDb() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS service_bookings (
+      id SERIAL PRIMARY KEY,
 
+      booking_no TEXT UNIQUE NOT NULL,
+
+      customer_name TEXT NOT NULL,
+      mobile TEXT NOT NULL,
+      whatsapp TEXT,
+      address TEXT,
+      google_map TEXT,
+
+      service_type TEXT NOT NULL,
+
+      booking_date DATE NOT NULL,
+      booking_time TIME,
+
+      assigned_technician TEXT,
+
+      status TEXT DEFAULT 'New',
+
+      price NUMERIC DEFAULT 0,
+
+      notes TEXT,
+
+      created_by INTEGER,
+
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
   await pool.query(`
     DELETE FROM packages
     WHERE ac_units = 3
