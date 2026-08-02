@@ -535,3 +535,64 @@ grid-template-columns:1fr;
 }
 
 }
+/* Technician Job Cards */
+
+.filters-row{
+    display:flex;
+    gap:16px;
+    margin:20px 0;
+    flex-wrap:wrap;
+}
+
+.filters-row .input{
+    flex:1;
+    min-width:220px;
+}
+
+.card-subtitle{
+    color:#6b7280;
+    font-size:14px;
+    margin-top:4px;
+}
+
+.jobcard-table{
+    margin-top:15px;
+}
+/* ==========================
+   Technician Job Cards
+========================== */
+
+.jobcard-table{
+    margin-top:20px;
+}
+
+.filters-row{
+    display:flex;
+    gap:16px;
+    align-items:center;
+    flex-wrap:wrap;
+    margin:20px 0;
+}
+
+.filters-row .input{
+    flex:1;
+    min-width:220px;
+}
+
+.card-subtitle{
+    color:#6b7280;
+    font-size:14px;
+    margin-top:4px;
+}
+
+@media(max-width:768px){
+
+.filters-row{
+flex-direction:column;
+}
+
+.filters-row .input{
+width:100%;
+}
+
+}

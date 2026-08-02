@@ -172,255 +172,119 @@ return (
 
 </div>
 
-        <div className="card">
+            <div className="card">
 
-          <div className="card-header">
-            <div className="card-title">
-              New Technician Job Card
-            </div>
-          </div>
+  <div className="card-header">
 
-          <div className="jobcard-grid">
+    <div>
 
-  <div>
-    <label>Customer</label>
+      <div className="card-title">
+        Job Cards
+      </div>
 
-    <select
-      className="input"
-      value={form.client_id}
-      onChange={(e) => {
-        const id = e.target.value;
+      <div className="card-subtitle">
+        Manage technician field visits and maintenance work.
+      </div>
 
-        setForm({
-          ...form,
-          client_id: id,
-          contract_id: ""
-        });
+    </div>
 
-        loadContracts(id);
+    <button
+      className="btn"
+      onClick={() => {
+        // We'll connect the drawer next
       }}
     >
-      <option value="">Select Customer</option>
+      + New Job Card
+    </button>
 
-      {customers.map((customer) => (
-        <option
-          key={customer.id}
-          value={customer.id}
-        >
-          {customer.name}
-        </option>
-      ))}
+  </div>
+
+  <div className="filters-row">
+
+    <input
+      className="input"
+      placeholder="Search Job Card..."
+    />
+
+    <select className="input">
+      <option>All Status</option>
+      <option>Pending</option>
+      <option>Completed</option>
     </select>
-  </div>
 
-  <div>
-    <label>Contract</label>
-
-    <select
-      className="input"
-      value={form.contract_id}
-      onChange={(e) =>
-        setForm({
-          ...form,
-          contract_id: e.target.value
-        })
-      }
-    >
-      <option value="">Select Contract</option>
-
-      {contracts.map((contract) => (
-        <option
-          key={contract.id}
-          value={contract.id}
-        >
-          {contract.contract_number}
-        </option>
-      ))}
+    <select className="input">
+      <option>All Technicians</option>
     </select>
+
   </div>
 
-  <div>
-    <label>Villa</label>
-
-    <input
-      className="input"
-      placeholder="Select Villa"
-    />
-  </div>
-
-  <div>
-    <label>Technician</label>
-
-    <input
-      className="input"
-      placeholder="Technician Name"
-      value={form.technician_name}
-      onChange={(e) =>
-        setForm({
-          ...form,
-          technician_name: e.target.value
-        })
-      }
-    />
-  </div>
-
-  <div>
-    <label>Service Date</label>
-
-    <input
-      type="date"
-      className="input"
-      value={form.service_date}
-      onChange={(e) =>
-        setForm({
-          ...form,
-          service_date: e.target.value
-        })
-      }
-    />
-  </div>
-
-  <div>
-    <label>Service Type</label>
-
-    <input
-      className="input"
-      placeholder="AC Cleaning"
-      value={form.service_type}
-      onChange={(e) =>
-        setForm({
-          ...form,
-          service_type: e.target.value
-        })
-      }
-    />
-  </div>
-
-</div>
-          <hr />
-
-          <h3>Before Photos</h3>
-
-          <input
-            type="file"
-            multiple
-            className="input"
-          />
-
-          <hr />
-
-          <h3>After Photos</h3>
-
-          <input
-            type="file"
-            multiple
-            className="input"
-          />
-
-          <hr />
-
-          <h3>Technician Notes</h3>
-
-          <textarea
-  className="input"
-  rows="6"
-  placeholder="Write notes..."
-  value={form.technician_notes}
-  onChange={(e) =>
-    setForm({
-      ...form,
-      technician_notes: e.target.value
-    })
-  }
-/>
-
-          <hr />
-
-          <h3>Customer Signature</h3>
-
-          <input
-            className="input"
-            placeholder="Signature image or name"
-          />
-
-          <hr />
-
-          <h3>Technician Signature</h3>
-
-          <input
-            className="input"
-            placeholder="Signature image or name"
-          />
-
-          <br />
-          <br />
-
-          <button
-  className="btn"
-  onClick={saveJobCard}
->
-  Save Job Card
-</button>
-<hr />
-
-<div className="card-header">
-  <div className="card-title">
-    Existing Job Cards
-  </div>
-</div>
-
-{jobCards.length === 0 ? (
-
-  <div
-    style={{
-      padding:20,
-      color:"#777"
-    }}
-  >
-    No Job Cards Found.
-  </div>
-
-) : (
-
-  <table className="table">
+  <table className="table jobcard-table">
 
     <thead>
 
       <tr>
-
         <th>Job Card</th>
+        <th>Customer</th>
         <th>Technician</th>
-        <th>Date</th>
+        <th>Service Date</th>
         <th>Status</th>
-
+        <th>Actions</th>
       </tr>
 
     </thead>
 
     <tbody>
 
-      {jobCards.map(card=>(
+      {jobCards.length === 0 ? (
 
-        <tr key={card.id}>
-
-          <td>{card.job_card_no}</td>
-
-          <td>{card.technician_name}</td>
-
-          <td>{card.service_date}</td>
-
-          <td>{card.status}</td>
-
+        <tr>
+          <td
+            colSpan="6"
+            style={{
+              textAlign: "center",
+              padding: 30,
+              color: "#777"
+            }}
+          >
+            No Job Cards Found.
+          </td>
         </tr>
 
-      ))}
+      ) : (
+
+        jobCards.map(card => (
+
+          <tr key={card.id}>
+
+            <td>{card.job_card_no}</td>
+
+            <td>{card.client_name || "-"}</td>
+
+            <td>{card.technician_name}</td>
+
+            <td>{card.service_date}</td>
+
+            <td>{card.status}</td>
+
+            <td>
+              <button className="btn btn-sm">
+                View
+              </button>
+            </td>
+
+          </tr>
+
+        ))
+
+      )}
 
     </tbody>
 
   </table>
 
-)}
-        </div>
+</div>
+
+
 
       </div>
 
