@@ -5,17 +5,24 @@ const navItems = [
   { to: '/', label: 'Dashboard', icon: '\u25C8', section: 'Main', exact: true },
   { to: '/contracts', label: 'Contracts', icon: '\u{1F4C4}', section: null },
   { to: '/clients', label: 'Clients', icon: '\u{1F465}', section: null },
-
+{ to: '/customer-history', label: 'Customer History', icon: '👤', section: null },
   { to: '/packages', label: 'Packages', icon: '\u{1F4E6}', section: 'Services' },
 
   {
-    to: '/service-bookings',
-    label: 'Service Bookings',
-    icon: '\u{1F4C5}',
-    section: null
-  },
+  to: '/service-bookings',
+  label: 'Service Bookings',
+  icon: '\u{1F4C5}',
+  section: null
+},
 
-  { to: '/service-reports', label: 'Service Reports', icon: '\u{1F4CB}', section: null },
+{
+  to: '/technician-job-cards',
+  label: 'Technician Job Cards',
+  icon: '\u{1F527}',
+  section: null
+},
+
+{ to: '/service-reports', label: 'Service Reports', icon: '\u{1F4CB}', section: null },
   { to: '/visits', label: 'Service Visits', icon: '\u{1F527}', section: null },
   { to: '/schedule', label: 'Schedule', icon: '\u{1F4C5}', section: null },
   { to: '/tickets', label: 'Service Tickets', icon: '\u{1F3AB}', section: null },

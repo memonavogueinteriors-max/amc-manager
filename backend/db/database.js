@@ -269,6 +269,41 @@ async function initDb() {
         ELSE final_amount
       END;
   `);
+await pool.query(`
+CREATE TABLE IF NOT EXISTS technician_job_cards (
+    id SERIAL PRIMARY KEY,
+
+    job_card_no VARCHAR(50) UNIQUE,
+
+    contract_id INTEGER,
+
+    client_id INTEGER,
+
+    villa_id INTEGER,
+
+    technician_name VARCHAR(255),
+
+    service_date DATE,
+
+    service_type VARCHAR(255),
+
+    before_photos TEXT[] DEFAULT '{}',
+
+    after_photos TEXT[] DEFAULT '{}',
+
+    technician_notes TEXT,
+
+    customer_signature TEXT,
+
+    technician_signature TEXT,
+
+    status VARCHAR(50) DEFAULT 'Pending',
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+`);
   await pool.query(`
     DELETE FROM packages
     WHERE ac_units = 3
