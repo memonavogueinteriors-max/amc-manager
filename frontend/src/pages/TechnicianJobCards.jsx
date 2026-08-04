@@ -328,10 +328,10 @@ export default function TechnicianJobCards() {
       return;
     }
 
-    if (!form.client_id || !form.contract_id || !form.technician_name || !form.service_date) {
-      alert('Customer, contract, technician and service date are required.');
-      return;
-    }
+    if (!form.technician_name || !form.service_date || !form.service_type) {
+  alert('Technician, service type and service date are required.');
+  return;
+}
 
     setSaving(true);
     try {
@@ -522,7 +522,6 @@ export default function TechnicianJobCards() {
                   className="form-input"
                   value={form.contract_id}
                   onChange={event => handleContractChange(event.target.value)}
-                  disabled={!form.client_id}
                 >
                   <option value="">Select contract</option>
                   {contracts.map(contract => (

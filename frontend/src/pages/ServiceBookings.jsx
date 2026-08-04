@@ -370,18 +370,25 @@ export default function ServiceBookings() {
                           )}
 
                           <button
-                            className="btn btn-sm"
-                            onClick={() => openEditModal(booking)}
-                          >
-                            Edit
-                          </button>
+  className="btn btn-sm"
+  onClick={() => openEditModal(booking)}
+>
+  Edit
+</button>
 
-                          <button
-                            className="btn btn-sm btn-danger"
-                            onClick={() => deleteBooking(booking)}
-                          >
-                            Delete
-                          </button>
+<button
+  className="btn btn-sm btn-primary"
+  onClick={() => openJobCard(booking)}
+>
+  📋 Job Card
+</button>
+
+<button
+  className="btn btn-sm btn-danger"
+  onClick={() => deleteBooking(booking)}
+>
+  Delete
+</button>
                         </div>
                       </td>
                     </tr>
