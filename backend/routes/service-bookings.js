@@ -322,7 +322,100 @@ router.put('/:id', auth, async (req, res) => {
     res.status(500).json({ error: 'Unable to update service booking.' });
   }
 });
+router.post('/:id/job-card', auth, async (req, res) => {
+  try {
+    const db = getDb();
 
+    // Load booking
+    const bookingResult = await db.query(
+      `SELECT * FROM service_bookings WHERE id = $1`,
+      [req.params.id]
+    );
+
+    if (!bookingResult.rows.length) {
+      return res.status(404).json({
+        error: 'Service booking not found.'
+      });
+    }
+
+    const booking = bookingResult.rows[0];
+
+    // Existing job card?
+    const existing = await db.query(
+      `SELECT *
+       FROM technician_job_cards
+       WHERE service_booking_id = $1
+       LIMIT 1`,
+      [booking.id]
+    );
+
+    if (existing.rows.length) {
+      return res.json(existing.rows[0]);
+    }
+
+    // Generate Job Card Number
+    const count = await db.query(
+      `SELECT COUNT(*) FROM technician_job_cards`
+    );
+
+    const job_card_no =
+      'JC-' +
+      String(Number(count.rows[0].count) + 1).padStart(5, '0');
+
+    // Create Job Card
+    const result = await db.query(
+      `
+      INSERT INTO technician_job_cards
+      (
+        job_card_no,
+        service_booking_id,
+        contract_id,
+        client_id,
+        villa_id,
+        technician_name,
+        service_date,
+        service_type,
+        before_photos,
+        after_photos,
+        technician_notes,
+        customer_signature,
+        technician_signature,
+        status
+      )
+      VALUES
+      (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14
+      )
+      RETURNING *
+      `,
+      [
+        job_card_no,
+        booking.id,
+        null,
+        null,
+        null,
+        booking.assigned_technician || '',
+        booking.booking_date,
+        booking.service_type,
+        [],
+        [],
+        booking.notes || '',
+        '',
+        '',
+        'Pending'
+      ]
+    );
+
+    res.json(result.rows[0]);
+
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      error: 'Unable to create Job Card.'
+    });
+  }
+});
 router.delete('/:id', auth, async (req, res) => {
   try {
     const result = await getDb().query(

@@ -171,6 +171,20 @@ export default function ServiceBookings() {
     });
     setModalOpen(true);
   };
+const openJobCard = async (booking) => {
+  try {
+    const { data } = await api.post(
+      `/service-bookings/${booking.id}/job-card`
+    );
+
+    window.location.href = `/technician-job-cards?id=${data.id}`;
+  } catch (err) {
+    alert(
+      err.response?.data?.error ||
+      'Unable to open Job Card.'
+    );
+  }
+};
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
