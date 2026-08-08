@@ -3,37 +3,25 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: '\u25C8', section: 'Main', exact: true },
-  { to: '/contracts', label: 'Contracts', icon: '\u{1F4C4}', section: null },
   { to: '/clients', label: 'Clients', icon: '\u{1F465}', section: null },
-{ to: '/customer-history', label: 'Customer History', icon: '👤', section: null },
-  { to: '/packages', label: 'Packages', icon: '\u{1F4E6}', section: 'Services' },
-
-  {
-  to: '/service-bookings',
-  label: 'Service Bookings',
-  icon: '\u{1F4C5}',
-  section: null
-},
-
-{
-  to: '/technician-job-cards',
-  label: 'Technician Job Cards',
-  icon: '\u{1F527}',
-  section: null
-},
-
-{ to: '/service-reports', label: 'Service Reports', icon: '\u{1F4CB}', section: null },
-  { to: '/visits', label: 'Service Visits', icon: '\u{1F527}', section: null },
+  { to: '/contracts', label: 'Contracts', icon: '\u{1F4C4}', section: null },
+  { to: '/visits', label: 'Service Visit Report', icon: '\u{1F4CB}', section: null },
   { to: '/schedule', label: 'Schedule', icon: '\u{1F4C5}', section: null },
-  { to: '/tickets', label: 'Service Tickets', icon: '\u{1F3AB}', section: null },
+  { to: '/tickets', label: 'Service Ticket', icon: '\u{1F3AB}', section: null },
 
-  { to: '/backup-status', label: 'Backup Status', icon: '\u2601\uFE0F', section: 'Owner' },
+  { to: '/service-bookings', label: 'Daily Bookings', icon: '\u{1F4C5}', section: 'Services' },
+  { to: '/technician-job-cards', label: 'Technician Job Card', icon: '\u{1F527}', section: null },
+  { to: '/service-reports', label: 'Service Report', icon: '\u{1F4CB}', section: null },
+  { to: '/customer-history', label: 'Customer History', icon: '\u{1F465}', section: null },
 
   { to: '/reports', label: 'Reports', icon: '\u{1F4CA}', section: 'Management' },
-  { to: '/users', label: 'User Management', icon: '\u{1F464}', section: null },
   { to: '/commissions', label: 'Commissions', icon: '\u{1F4B5}', section: null },
+  { to: '/users', label: 'User Management', icon: '\u{1F464}', section: null },
+  { to: '/backup-status', label: 'Backup Status', icon: '\u2601\uFE0F', section: null },
   { to: '/recycle', label: 'Recycle Bin', icon: '\u{1F5D1}\uFE0F', section: null },
-];export default function Layout() {
+];
+
+export default function Layout() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('amc_user') || '{}');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -79,7 +67,7 @@ const navItems = [
       : user.role || '';
 
   return (
-    <div className="app">
+    <div className="app-shell">
       <button
         type="button"
         className="mobile-menu-button"

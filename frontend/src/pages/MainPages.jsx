@@ -320,35 +320,6 @@ export function Dashboard() {
               </div>
             )}
           </div>
-
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">Recent Activity</div>
-            </div>
-
-            {(stats.recentActivity || []).slice(0, 5).map((a, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  gap: 12,
-                  padding: '8px 0',
-                  borderBottom: i < 4 ? '0.5px solid var(--border)' : 'none'
-                }}
-              >
-                <span>
-                  {a.type === 'ticket' ? 'Ticket' : a.type === 'order' ? 'Order' : 'Contract'}
-                </span>
-
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{a.label}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
-                    {a.type} Â· {new Date(a.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </div>
@@ -924,3 +895,4 @@ export function Clients() {
     </div>
   );
 }
+
