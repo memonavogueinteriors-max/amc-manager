@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const { getDb } = require('../db/database');
 const { auth } = require('../middleware/auth');
@@ -79,7 +79,8 @@ function validateBooking(body = {}, isUpdate = false) {
 async function generateBookingNumber(db) {
   const result = await db.query(`
     SELECT booking_no
-    FROM service_bookings
+    FROM service_bookings sb
+    LEFT JOIN users u ON u.id = sb.created_by
     WHERE booking_no ~ '^SB-[0-9]+$'
     ORDER BY CAST(SUBSTRING(booking_no FROM 4) AS INTEGER) DESC
     LIMIT 1
@@ -129,17 +130,17 @@ router.get('/', auth, async (req, res) => {
 
     const result = await db.query(`
       SELECT
-        id,
+        sb.id,
         booking_no,
         customer_name,
         mobile,
         whatsapp,
         email,
         address,
-        COALESCE(google_maps_link, google_map, '') AS google_maps_link,
+        COALESCE(sb.google_maps_link, sb.google_map, '') AS google_maps_link,
         service_type,
         booking_date,
-        COALESCE(preferred_time, booking_time::text, '') AS preferred_time,
+        COALESCE(sb.preferred_time, sb.booking_time::text, '') AS preferred_time,
         assigned_technician,
         status,
         price,
@@ -148,11 +149,15 @@ router.get('/', auth, async (req, res) => {
         payment_method,
         notes,
         created_by,
-        created_at,
-        updated_at
-      FROM service_bookings
+        u.name AS salesperson_name,
+        sb.commission_rate,
+        sb.commission_amount,
+        sb.created_at,
+        sb.updated_at
+      FROM service_bookings sb
+      LEFT JOIN users u ON u.id = sb.created_by
       ${whereClause}
-      ORDER BY booking_date DESC, created_at DESC
+      ORDER BY sb.booking_date DESC, sb.created_at DESC
     `, values);
 
     res.json(result.rows);
@@ -167,10 +172,11 @@ router.get('/:id', auth, async (req, res) => {
     const result = await getDb().query(`
       SELECT
         *,
-        COALESCE(google_maps_link, google_map, '') AS google_maps_link,
-        COALESCE(preferred_time, booking_time::text, '') AS preferred_time
-      FROM service_bookings
-      WHERE id = $1
+        COALESCE(sb.google_maps_link, sb.google_map, '') AS google_maps_link,
+        COALESCE(sb.preferred_time, sb.booking_time::text, '') AS preferred_time
+      FROM service_bookings sb
+      LEFT JOIN users u ON u.id = sb.created_by
+      WHERE sb.id = $1
     `, [req.params.id]);
 
     if (!result.rows[0]) {
@@ -221,10 +227,12 @@ router.post('/', auth, async (req, res) => {
         final_amount,
         payment_method,
         notes,
-        created_by
+        created_by,
+        sb.commission_rate,
+        commission_amount
       )
       VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
       )
       RETURNING *
     `, [
@@ -246,7 +254,9 @@ router.post('/', auth, async (req, res) => {
       booking.final_amount,
       booking.payment_method,
       booking.notes,
-      req.user?.id || null
+      req.user?.id || null,
+      10,
+      Number((booking.price * 0.10).toFixed(2))
     ]);
 
     await client.query('COMMIT');
@@ -288,8 +298,10 @@ router.put('/:id', auth, async (req, res) => {
         final_amount = $15,
         payment_method = $16,
         notes = $17,
+        commission_rate = 10,
+        commission_amount = ROUND($13 * 0.10, 2),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $18
+      WHERE sb.id = $18
       RETURNING *
     `, [
       booking.customer_name,
@@ -435,3 +447,16 @@ router.delete('/:id', auth, async (req, res) => {
 });
 
 module.exports = router;
+
+
+
+
+
+
+
+
+
+
+
+
+

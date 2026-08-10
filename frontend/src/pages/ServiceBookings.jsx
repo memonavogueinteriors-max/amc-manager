@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 
 const STATUSES = [
@@ -191,6 +191,11 @@ const openJobCard = async (booking) => {
   };
 
   const finalAmount = Math.max(Number(form.price || 0) - Number(form.discount || 0), 0);
+
+const commissionRate = 10;
+const commissionAmount = Number(
+  (Number(form.price || 0) * commissionRate / 100).toFixed(2)
+);
 
   const saveBooking = async (event) => {
     event.preventDefault();
@@ -394,7 +399,7 @@ const openJobCard = async (booking) => {
   className="btn btn-sm btn-primary"
   onClick={() => openJobCard(booking)}
 >
-  📋 Job Card
+              Job Card
 </button>
 
 <button
@@ -603,6 +608,11 @@ const openJobCard = async (booking) => {
               <strong>{money(finalAmount)}</strong>
             </div>
 
+        <div className="service-bookings-total">
+          <span>Salesperson Commission ({commissionRate}%)</span>
+          <strong>{money(commissionAmount)}</strong>
+        </div>
+
             <div className="form-group">
               <label className="form-label">Notes</label>
               <textarea
@@ -633,3 +643,5 @@ const openJobCard = async (booking) => {
     </div>
   );
 }
+
+
