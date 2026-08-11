@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 
 const navItems = [
@@ -74,7 +74,7 @@ export default function Layout() {
         onClick={() => setMobileMenuOpen(true)}
         aria-label="Open menu"
       >
-        ☰
+        ?
       </button>
 
       {mobileMenuOpen && (
@@ -93,7 +93,7 @@ export default function Layout() {
           onClick={closeMobileMenu}
           aria-label="Close menu"
         >
-          ×
+          �
         </button>
 
         <div className="sidebar-logo">
@@ -115,7 +115,7 @@ export default function Layout() {
             className="logo-name"
             style={{ fontSize: 13, fontWeight: 600 }}
           >
-            VAC AMC Management
+            VAC
           </div>
 
           <div className="logo-sub">Service Portal</div>

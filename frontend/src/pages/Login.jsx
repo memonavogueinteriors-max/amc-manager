@@ -57,7 +57,7 @@ export default function Login() {
           />
 
           <div style={{ fontSize: 20, fontWeight: 600, marginTop: 8 }}>
-            VAC AMC Management
+            VAC
           </div>
 
           <div

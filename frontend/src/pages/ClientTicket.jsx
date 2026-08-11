@@ -61,7 +61,7 @@ export default function ClientTicket() {
       <div style={{ maxWidth: 480, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
           <img src="/logo.png" alt="VAC Logo" style={{ width: 120, objectFit: 'contain' }} />
-          <div style={{ fontSize: 18, fontWeight: 600, marginTop: 8 }}>VAC AMC Management</div>
+          <div style={{ fontSize: 18, fontWeight: 600, marginTop: 8 }}>VAC</div>
           <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>Service Ticket</div>
         </div>
 
